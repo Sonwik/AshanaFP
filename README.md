@@ -6,7 +6,7 @@ and the administrator manages the menu and sees how the canteen is doing.
 
 *Ashana* (асхана) means "canteen" in Kazakh.
 
-Final project for **Introduction to Functional Programming (C# / .NET, Blazor)**, 
+Final project for **Introduction to Functional Programming (C# / .NET, Blazor)**, group **IT-2509**:
 **Abay Zharkyn** and **Amna Bangash**.
 
 ## Functional programming in this project
@@ -84,7 +84,7 @@ You need the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (W
 silicon, or Linux). No database server is needed.
 
 ```bash
-cd Ashana
+cd AshanaFP
 dotnet run --project src/Ashana.Web
 ```
 
@@ -170,6 +170,12 @@ docs/                     Architecture, user guide, API, testing, development
 
 ## Use of AI
 
-This project was built with the help of an AI assistant (Claude, by Anthropic). The assistant helped generate code,
-tests, documentation and slides. We read, ran and tested all of it, made our
-own changes (see the commit history), and can explain every part of the code.
+We built this project with the help of an AI assistant (Claude, by Anthropic).
+
+* **What the AI did:** generated most of the code, the tests, the documentation and drafts of the presentation slides.
+* **Rules we gave it:** the syllabus and the 20 final-project criteria are the specification; all business logic is
+  written as pure functions; data is immutable records; business errors are `Result`/`Option` values, not exceptions;
+  the current time is passed in as a parameter (no `DateTime.Now` in the core); every business rule has a test.
+* **What we did:** chose the idea and the requirements, compared an object-oriented and a functional version and chose
+  the functional one, built and ran the project on our own machines, ran all 432 tests and fixed the one that failed
+  on the real xUnit runner, and read the code so that we can explain every part of it.
