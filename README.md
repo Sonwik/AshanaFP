@@ -170,7 +170,6 @@ docs/                     Architecture, user guide, API, testing, development
 
 ## Use of AI
 
-This project was built with the help of an AI assistant (Claude, by Anthropic),
-used with the instructor's permission. The assistant helped generate code,
+This project was built with the help of an AI assistant (Claude, by Anthropic). The assistant helped generate code,
 tests, documentation and slides. We read, ran and tested all of it, made our
 own changes (see the commit history), and can explain every part of the code.
