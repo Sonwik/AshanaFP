@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Ashana.Web: the host. Blazor pages, sign-in, SignalR hub, JSON API. Composition root in Program.cs. -->
+
+  <PropertyGroup>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ashana.Application\Ashana.Application.csproj" />
+    <ProjectReference Include="..\Ashana.Infrastructure\Ashana.Infrastructure.csproj" />
+    <ProjectReference Include="..\Ashana.UI\Ashana.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ashana.IntegrationTests" />
+    <InternalsVisibleTo Include="Ashana.ComponentTests" />
+  </ItemGroup>
+
+</Project>

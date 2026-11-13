@@ -1,0 +1,11 @@
+.settings { display: grid; gap: 1.25rem; }
+.settings-group { display: grid; gap: 0.75rem; padding-bottom: 1.25rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--line); }
+.settings-group:last-of-type { border-bottom: 0; margin-bottom: 0.5rem; }
+.preview-facts { margin: 0.75rem 0 1rem; padding-left: 1.1rem; display: grid; gap: 0.5rem; }
+.preview-slots { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.4rem; }
+.preview-slot { padding: 0.2rem 0.55rem; border-radius: var(--radius-xs); background: var(--canvas); border: 1px solid var(--line); font-size: var(--step--1); }
+
+@media (min-width: 1000px) {
+  .settings { grid-template-columns: minmax(0, 1fr) 22rem; align-items: start; }
+  .settings-preview { position: sticky; top: calc(var(--topbar-h) + 1.5rem); }
+}

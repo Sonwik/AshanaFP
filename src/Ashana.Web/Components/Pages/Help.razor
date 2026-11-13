@@ -1,0 +1,80 @@
+@page "/help"
+
+<PageTitle>@UiText.Title("Help")</PageTitle>
+
+<PageHeader Title="How Ashana works">
+    Order before the break, skip the queue, pick up at the counter with your number.
+</PageHeader>
+
+<ol class="how" aria-label="Three steps">
+    <li class="how-step">
+        <span class="how-icon"><Icon Name="utensils-crossed" Size="26" /></span>
+        <h2>Choose dishes</h2>
+        <p>The menu shows what is left right now. "Sold out" appears for everyone the moment the last portion is ordered.</p>
+    </li>
+    <li class="how-step">
+        <span class="how-icon"><Icon Name="clock" Size="26" /></span>
+        <h2>Pick a time</h2>
+        <p>Each pickup slot shows how busy it is. Quiet slots mean a shorter wait for you and less rush for the kitchen.</p>
+    </li>
+    <li class="how-step">
+        <span class="how-icon"><Icon Name="receipt" Size="26" /></span>
+        <h2>Say your number</h2>
+        <p>Your order page and the screen at the counter show the same number. When it turns green, come and pay at the counter.</p>
+    </li>
+</ol>
+
+<div class="help-grid">
+    <section class="panel" aria-labelledby="faq-title">
+        <h2 id="faq-title" class="panel-title">Questions students ask</h2>
+        <details>
+            <summary>Can I cancel an order?</summary>
+            <p>Yes, until the kitchen starts cooking. Open the order and press "Cancel order". The portions go back to the menu.</p>
+        </details>
+        <details>
+            <summary>Do I pay online?</summary>
+            <p>No. You choose card, cash or QR at checkout and pay at the counter when you collect the food.</p>
+        </details>
+        <details>
+            <summary>What if I am late?</summary>
+            <p>Your food waits at the counter. If nobody collects it 30 minutes after the pickup slot ends, it is marked "not picked up".</p>
+        </details>
+        <details>
+            <summary>Why can I not choose a slot that starts in five minutes?</summary>
+            <p>The kitchen needs a few minutes to cook. Slots that start too soon are greyed out.</p>
+        </details>
+        <details>
+            <summary>How many orders can I have at once?</summary>
+            <p>Up to three active orders, so the slots stay fair for everyone.</p>
+        </details>
+        <details>
+            <summary>Will I get a notification?</summary>
+            <p>The order page updates by itself. You can also allow browser notifications on the order page; then the phone tells you when the food is ready.</p>
+        </details>
+    </section>
+
+    <section class="panel" aria-labelledby="staff-title">
+        <h2 id="staff-title" class="panel-title">For kitchen staff</h2>
+        <ul class="help-list">
+            <li><strong>Orders</strong> has three columns: New, Cooking, Ready. One button moves an order to the next column.</li>
+            <li>Orders whose pickup time has come turn red, so late ones are easy to spot.</li>
+            <li><strong>Prep list</strong> adds up portions per pickup slot: you know how many plovs to put on the plate for 12:30.</li>
+            <li><strong>Stop list</strong> hides a dish that ran out, or adds portions if you cooked more.</li>
+            <li><strong>Pause new orders</strong> stops new orders during a rush. Students see your message at once.</li>
+            <li>Open the <a href="board" target="_blank" rel="noopener">TV screen</a> on the display at the counter. It shows only numbers, never names.</li>
+        </ul>
+
+        <h2 class="panel-title help-sub">For administrators</h2>
+        <ul class="help-list">
+            <li><strong>Dashboard</strong>: revenue, busy times, top dishes and wasted portions. Export orders to CSV for Excel.</li>
+            <li><strong>Menu</strong>: add dishes and categories, change prices and daily portions, archive old dishes.</li>
+            <li><strong>Settings</strong>: working hours, slot length, slot capacity and fair-use limits.</li>
+            <li><strong>Users</strong>: give the cook role to kitchen staff, or block an account.</li>
+        </ul>
+    </section>
+</div>
+
+<section class="panel help-access" aria-labelledby="access-title">
+    <h2 id="access-title" class="panel-title">Accessibility</h2>
+    <p>Everything works with a keyboard: <kbd>Tab</kbd> moves between controls, <kbd>Enter</kbd> or <kbd>Space</kbd> presses them, <kbd>Esc</kbd> closes dialogs. Statuses always have a text label, not only a color, and changes are announced to screen readers. The dark theme is in the top bar.</p>
+</section>

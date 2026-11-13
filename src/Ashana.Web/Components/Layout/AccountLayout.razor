@@ -1,0 +1,13 @@
+@* Sign-in and sign-up pages: a quiet centered card. These pages are static HTML forms (no circuit). *@
+@inherits LayoutComponentBase
+
+<div class="account-page">
+    <a href="" class="account-brand" data-enhance-nav="false"><AppLogo Large="true" /></a>
+    <main class="account-card">
+        <div class="account-band" aria-hidden="true"><TileOrnament Height="26" Color="currentColor" /></div>
+        <div class="account-body">
+            @Body
+        </div>
+    </main>
+    <p class="account-foot">Order ahead, skip the queue, pick up at your time.</p>
+</div>

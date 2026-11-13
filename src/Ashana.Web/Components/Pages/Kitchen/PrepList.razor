@@ -1,0 +1,95 @@
+@page "/kitchen/prep"
+@layout KitchenLayout
+@attribute [Authorize(Policy = Policies.Kitchen)]
+@implements IDisposable
+@inject Ashana.Application.Kitchen.KitchenService Kitchen
+@inject IEventSubscriber Events
+@inject CanteenClock Clock
+
+<PageTitle>@UiText.Title("Prep list")</PageTitle>
+
+<PageHeader Title="Prep list">
+    How many portions to cook for each pickup time. Only orders that are not ready yet are counted.
+</PageHeader>
+
+@if (_prep is null)
+{
+    <Skeleton Lines="4" Height="3rem" />
+}
+else if (_prep.Slots.Count == 0)
+{
+    <EmptyState Title="Nothing to prepare" Icon="list-checks">
+        <ChildContent><p>When students order, their dishes are added up here by pickup time.</p></ChildContent>
+    </EmptyState>
+}
+else
+{
+    <section class="panel prep-totals" aria-labelledby="totals-title">
+        <h2 id="totals-title" class="panel-title">@SlotService.DayTitle(_prep.Day, Clock.Today), all slots</h2>
+        <ul class="prep-chips">
+            @foreach (var item in _prep.Totals)
+            {
+                <li><span aria-hidden="true">@item.Emoji</span> <strong class="num">@item.Quantity</strong> @item.Name</li>
+            }
+        </ul>
+    </section>
+
+    <div class="prep-slots">
+        @foreach (var slot in _prep.Slots)
+        {
+            var late = slot.Start <= _now;
+            <section class="prep-slot @(late ? "is-late" : null)" aria-label="@($"Pickup {slot.Label}")">
+                <header>
+                    <h3 class="num">@slot.Label</h3>
+                    <span class="muted">@slot.OrderCount @(slot.OrderCount == 1 ? "order" : "orders"), @slot.Portions portions</span>
+                    @if (late)
+                    {
+                        <Badge Tone="Tone.Danger">Late</Badge>
+                    }
+                </header>
+                <ul>
+                    @foreach (var item in slot.Items)
+                    {
+                        <li><span class="prep-qty num">@item.Quantity×</span> <span aria-hidden="true">@item.Emoji</span> @item.Name</li>
+                    }
+                </ul>
+            </section>
+        }
+    </div>
+}
+
+@code {
+    private readonly Debouncer _reload = new(TimeSpan.FromMilliseconds(300));
+    private Ashana.Application.Kitchen.PrepList? _prep;
+    private IDisposable? _subscription;
+    private DateTimeOffset _now;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        if (RendererInfo.IsInteractive)
+        {
+            _subscription = Events.Subscribe<OrderChanged>(_ =>
+            {
+                _reload.Run(() => InvokeAsync(async () =>
+                {
+                    await LoadAsync();
+                    StateHasChanged();
+                }));
+                return Task.CompletedTask;
+            });
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _prep = await Kitchen.GetPrepListAsync();
+        _now = Clock.Now;
+    }
+
+    public void Dispose()
+    {
+        _subscription?.Dispose();
+        _reload.Dispose();
+    }
+}

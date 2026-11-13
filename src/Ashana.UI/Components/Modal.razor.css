@@ -1,0 +1,70 @@
+.modal {
+  width: min(34rem, calc(100vw - 1.5rem));
+  max-height: min(88vh, 52rem);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+}
+.modal[open] { animation: modal-in 200ms var(--ease-out); }
+.modal::backdrop {
+  background: rgb(13 20 48 / 0.55);
+  backdrop-filter: blur(2px);
+}
+.modal-small { width: min(26rem, calc(100vw - 1.5rem)); }
+.modal-large { width: min(52rem, calc(100vw - 1.5rem)); }
+
+.modal-surface {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  max-height: inherit;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1rem 0.5rem 1.25rem;
+}
+.modal-title { font-size: var(--step-1); }
+.modal-close {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.modal-close:hover { background: var(--canvas); color: var(--ink); }
+.modal-body { padding: 0.5rem 1.25rem 1.25rem; overflow-y: auto; }
+.modal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.875rem 1.25rem;
+  border-top: 1px solid var(--line);
+  background: var(--canvas);
+}
+
+/* On phones the dialog becomes a bottom sheet: easier to reach with a thumb. */
+@media (max-width: 599px) {
+  .modal {
+    width: 100vw;
+    max-width: 100vw;
+    margin: auto 0 0;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .modal[open] { animation: sheet-in 240ms var(--ease-out); }
+  .modal-footer > ::deep * { flex: 1 1 auto; }
+}
+
+@keyframes modal-in { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes sheet-in { from { transform: translateY(100%); } to { transform: none; } }

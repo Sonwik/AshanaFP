@@ -1,0 +1,67 @@
+/* Always dark, whatever the theme: a TV in a bright canteen reads best as light numbers on night blue. */
+.tv {
+  --ink: #e8edf8;
+  --muted: #9da9c6;
+  --line: #2a3866;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  background: #0d1430;
+  color: var(--ink);
+}
+.tv-head { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2.5vw 0.75rem; }
+.tv-clock { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 3rem); font-weight: 600; }
+.tv-band { height: 2.6rem; padding-top: 0.35rem; background: #0b7380; color: color-mix(in srgb, #ffffff 30%, #0b7380); }
+
+.tv-cols { display: grid; grid-template-columns: 1fr 1.4fr; min-height: 0; }
+.tv-col { padding: 1.5rem 2.5vw; overflow: hidden; }
+.tv-col h2 {
+  font-size: clamp(1.25rem, 2.4vw, 2.4rem);
+  margin-bottom: 1.25rem;
+  color: var(--muted);
+}
+.tv-ready { background: #101a3d; border-left: 1px solid var(--line); }
+.tv-ready h2 { color: #f6b640; }
+
+.tv-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 0.9rem 1.6rem;
+}
+/* The numbers are re-created by js/board.js, so they carry no scope attribute: reach them with ::deep. */
+.tv-list ::deep .tv-num {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.tv-preparing ::deep .tv-num { font-size: clamp(2rem, 4.5vw, 4.5rem); color: var(--muted); }
+.tv-ready ::deep .tv-num { font-size: clamp(3rem, 8vw, 8rem); color: #f6b640; }
+.tv-ready ::deep .tv-num.is-new { animation: tv-pulse 1.2s ease-in-out 4; }
+
+.tv-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 2.5vw;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: clamp(0.9rem, 1.3vw, 1.3rem);
+}
+.tv-status::before { content: ""; display: inline-block; width: 0.6em; height: 0.6em; margin-right: 0.5em; border-radius: 50%; background: #f6b640; }
+.tv-status[data-status="live"]::before { background: #5ddcaf; }
+.tv-status[data-status="offline"]::before { background: #ff8a9c; }
+
+@keyframes tv-pulse {
+  0%, 100% { transform: scale(1); text-shadow: none; }
+  50% { transform: scale(1.06); text-shadow: 0 0 28px rgb(246 182 64 / 0.55); }
+}
+
+@media (max-width: 700px) {
+  .tv-cols { grid-template-columns: 1fr; }
+  .tv-ready { border-left: 0; border-top: 1px solid var(--line); }
+}

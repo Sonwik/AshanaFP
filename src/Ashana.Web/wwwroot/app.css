@@ -1,0 +1,123 @@
+/*
+  App-level styles shared by many pages (layout sizes, panels, link buttons, form helpers).
+  Design tokens and base element styles come from the component library: _content/Ashana.UI/ashana-ui.css.
+*/
+
+:root {
+  --page-max: 76rem;
+  --gutter: 1rem;
+  --topbar-h: 3.75rem;
+}
+@media (min-width: 600px) { :root { --gutter: 1.5rem; } }
+@media (min-width: 1200px) { :root { --gutter: 2rem; } }
+
+.skip-link {
+  position: absolute;
+  z-index: 100;
+  left: 0.75rem;
+  top: -4rem;
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 700;
+}
+.skip-link:focus { top: 0.75rem; color: var(--paper); }
+
+.page-loading { display: grid; place-items: center; min-height: 40vh; }
+
+.panel {
+  padding: 1.1rem 1.2rem 1.25rem;
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+.panel-title { font-family: var(--font-text); font-size: var(--step-1); font-weight: 700; letter-spacing: 0; }
+
+/* Links that look like buttons (navigation stays a real link: middle-click, open in new tab...) */
+.btn-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: var(--radius-xs);
+  color: var(--tile);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn-link:hover { background: var(--tile-soft); color: var(--tile-strong); }
+.btn-link-solid { border: 1px solid var(--line-strong); background: var(--paper); color: var(--ink); }
+.btn-link-solid:hover { border-color: var(--ink); background: var(--paper); color: var(--ink); }
+button.btn-link { border: 0; background: transparent; cursor: pointer; font: inherit; }
+button.btn-link-solid { border: 1px solid var(--line-strong); background: var(--paper); }
+
+.btn-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.7rem 1.2rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--saffron);
+  color: var(--on-saffron);
+  font-weight: 700;
+  font-size: 1.0625rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn-cta:hover { background: var(--saffron-strong); color: var(--on-saffron); }
+.empty-actions .btn-cta, .account-page .btn-cta { width: auto; }
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tile);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+}
+
+/* Messages */
+.notice {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius-sm);
+  background: var(--cooking-soft);
+  border-left: 4px solid var(--saffron);
+}
+.notice ul { margin: 0; padding-left: 1.1rem; }
+.form-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* Forms */
+.auth-form { display: grid; gap: 1rem; }
+.form-grid { display: grid; gap: 0.9rem 1rem; }
+.form-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+@media (min-width: 600px) {
+  .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .form-grid > .span-2 { grid-column: 1 / -1; }
+}
+
+/* Tables: rows of hidden or archived things are dimmed (class set through DataTable.RowClass) */
+.row-hidden td { opacity: 0.6; }
+
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; }

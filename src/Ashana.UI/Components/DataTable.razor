@@ -1,0 +1,143 @@
+@*
+  Generic, templated table: sorting, paging and a card layout on phones.
+  Columns are declared as child components and register themselves through a CascadingValue:
+
+      <DataTable TItem="UserDto" Items="users" RowKey="u => u.Id">
+          <Columns>
+              <DataColumn TItem="UserDto" Title="Name" SortBy="u => u.DisplayName">@context.DisplayName</DataColumn>
+          </Columns>
+      </DataTable>
+*@
+@typeparam TItem
+
+<CascadingValue Value="this" IsFixed="true">
+    @Columns
+</CascadingValue>
+
+<div class="table-wrap @Class">
+    <table class="table">
+        @if (Caption is not null)
+        {
+            <caption class="visually-hidden">@Caption</caption>
+        }
+        <thead>
+            <tr>
+                @foreach (var column in _columns)
+                {
+                    <th scope="col" class="@column.Class @AlignClass(column)" aria-sort="@AriaSort(column)">
+                        @if (column.SortBy is not null)
+                        {
+                            <button type="button" class="sort" @onclick="() => SortBy(column)">
+                                @column.Title
+                                <Icon Name="chevron-down" Size="14" Class="@SortIconClass(column)" />
+                            </button>
+                        }
+                        else
+                        {
+                            @column.Title
+                        }
+                    </th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @if (PageItems.Count == 0)
+            {
+                <tr class="empty-row">
+                    <td colspan="@Math.Max(1, _columns.Count)">@(EmptyContent ?? DefaultEmpty)</td>
+                </tr>
+            }
+            @foreach (var item in PageItems)
+            {
+                <tr @key="RowKey(item)" class="@RowClass?.Invoke(item)">
+                    @foreach (var column in _columns)
+                    {
+                        <td data-label="@column.Title" class="@column.Class @AlignClass(column)">@column.ChildContent?.Invoke(item)</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (PageCount > 1)
+{
+    <nav class="pager" aria-label="@($"{Caption ?? "Table"} pages")">
+        <Button Size="ButtonSize.Small" Variant="ButtonVariant.Ghost" Icon="chevron-left" Disabled="@(_page == 0)" OnClick="() => GoTo(_page - 1)" aria-label="Previous page" />
+        <span class="pager-text num">Page @(_page + 1) of @PageCount</span>
+        <Button Size="ButtonSize.Small" Variant="ButtonVariant.Ghost" Icon="chevron-right" Disabled="@(_page >= PageCount - 1)" OnClick="() => GoTo(_page + 1)" aria-label="Next page" />
+    </nav>
+}
+
+@code {
+    private static readonly RenderFragment DefaultEmpty = builder => builder.AddContent(0, "Nothing to show yet.");
+    private readonly List<DataColumn<TItem>> _columns = [];
+    private DataColumn<TItem>? _sortColumn;
+    private bool _ascending = true;
+    private int _page;
+
+    [Parameter, EditorRequired] public IReadOnlyList<TItem> Items { get; set; } = [];
+
+    /// <summary>The <see cref="DataColumn{TItem}"/> declarations.</summary>
+    [Parameter] public RenderFragment? Columns { get; set; }
+
+    /// <summary>Stable key per row, so Blazor reuses DOM rows instead of rebuilding them (@key).</summary>
+    [Parameter, EditorRequired] public Func<TItem, object> RowKey { get; set; } = item => item!;
+
+    /// <summary>Rows per page; 0 shows everything.</summary>
+    [Parameter] public int PageSize { get; set; } = 10;
+
+    [Parameter] public string? Caption { get; set; }
+
+    [Parameter] public RenderFragment? EmptyContent { get; set; }
+
+    [Parameter] public Func<TItem, string?>? RowClass { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private int PageCount => TableQuery.PageCount(Items.Count, PageSize);
+
+    private IReadOnlyList<TItem> PageItems => TableQuery.Page(TableQuery.Sort(Items, _sortColumn?.SortBy, _ascending), _page, PageSize);
+
+    internal void AddColumn(DataColumn<TItem> column)
+    {
+        if (!_columns.Contains(column))
+        {
+            _columns.Add(column);
+            StateHasChanged();
+        }
+    }
+
+    internal void RemoveColumn(DataColumn<TItem> column)
+    {
+        if (_columns.Remove(column))
+        {
+            StateHasChanged();
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_page > PageCount - 1)
+        {
+            _page = PageCount - 1;
+        }
+    }
+
+    private void SortBy(DataColumn<TItem> column)
+    {
+        _ascending = _sortColumn != column || !_ascending;
+        _sortColumn = column;
+        _page = 0;
+    }
+
+    private void GoTo(int page) => _page = Math.Clamp(page, 0, PageCount - 1);
+
+    private string? AriaSort(DataColumn<TItem> column) =>
+        column.SortBy is null ? null : _sortColumn != column ? "none" : _ascending ? "ascending" : "descending";
+
+    private string SortIconClass(DataColumn<TItem> column) =>
+        _sortColumn != column ? "sort-icon idle" : _ascending ? "sort-icon flipped" : "sort-icon";
+
+    private static string? AlignClass(DataColumn<TItem> column) => column.AlignEnd ? "align-end" : null;
+}

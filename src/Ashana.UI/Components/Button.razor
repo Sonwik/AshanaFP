@@ -1,0 +1,59 @@
+@* Accessible button with variants, sizes, an optional icon and a busy state that blocks double clicks. *@
+<button type="@Type"
+        class="btn btn-@Variant.ToString().ToLowerInvariant() btn-@SizeClass @(FullWidth ? "btn-block" : null) @(IconOnly ? "btn-icon-only" : null) @Class"
+        disabled="@(Disabled || Busy)"
+        aria-busy="@(Busy ? "true" : null)"
+        @onclick="HandleClickAsync"
+        @attributes="AdditionalAttributes">
+    @if (Busy)
+    {
+        <span class="btn-spinner" aria-hidden="true"></span>
+    }
+    else if (Icon is not null)
+    {
+        <Icon Name="@Icon" Size="@(Size == ButtonSize.Large ? 22 : 18)" />
+    }
+    @if (ChildContent is not null)
+    {
+        <span class="btn-label">@ChildContent</span>
+    }
+</button>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public ButtonVariant Variant { get; set; } = ButtonVariant.Secondary;
+
+    [Parameter] public ButtonSize Size { get; set; } = ButtonSize.Medium;
+
+    /// <summary>Optional icon name shown before the label.</summary>
+    [Parameter] public string? Icon { get; set; }
+
+    /// <summary>Shows a spinner and disables the button while an operation runs.</summary>
+    [Parameter] public bool Busy { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public bool FullWidth { get; set; }
+
+    /// <summary><c>button</c> (default) or <c>submit</c>.</summary>
+    [Parameter] public string Type { get; set; } = "button";
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    /// <summary>Any other attribute (aria-label, title, data-*) is passed to the &lt;button&gt;.</summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool IconOnly => ChildContent is null && Icon is not null;
+
+    private string SizeClass => Size switch
+    {
+        ButtonSize.Small => "sm",
+        ButtonSize.Large => "lg",
+        _ => "md",
+    };
+
+    private Task HandleClickAsync(MouseEventArgs args) => OnClick.InvokeAsync(args);
+}

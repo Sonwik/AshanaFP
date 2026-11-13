@@ -1,0 +1,17 @@
+{
+  "name": "ashana-e2e",
+  "private": true,
+  "description": "End-to-end tests for Ashana in a real browser (Playwright). See README.md in this folder.",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed --project=desktop",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.63.0"
+  },
+  "overrides": {
+    "playwright-core": "1.63.0"
+  }
+}

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Ashana.Functional: the small functional "prelude" every other layer uses.
+    Option<T> (Maybe), Result<T> (Either with an Error on the left), Unit, validation rules,
+    function composition, currying, memoization, trampolines and lazy sequences.
+    It references nothing, so it could be reused in any other C# project.
+  -->
+
+</Project>

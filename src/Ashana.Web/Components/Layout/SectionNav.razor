@@ -1,0 +1,18 @@
+@* Second-level tabs for the kitchen and admin areas. Data-driven, so both areas reuse it. *@
+<nav class="section-nav" aria-label="@Label">
+    @foreach (var link in Links)
+    {
+        <NavLink href="@link.Href" Match="@(link.Exact ? NavLinkMatch.All : NavLinkMatch.Prefix)">
+            <Icon Name="@link.Icon" Size="18" />
+            <span>@link.Text</span>
+        </NavLink>
+    }
+</nav>
+
+@code {
+    public sealed record Item(string Href, string Text, string Icon, bool Exact = false);
+
+    [Parameter, EditorRequired] public IReadOnlyList<Item> Links { get; set; } = [];
+
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+}

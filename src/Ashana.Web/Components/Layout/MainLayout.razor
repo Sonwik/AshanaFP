@@ -1,0 +1,72 @@
+﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject CartState Cart
+@inject NavigationManager Navigation
+@inject IWebHostEnvironment Environment
+@inject ILogger<MainLayout> Logger
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<div class="shell">
+    <TopBar />
+    <PauseBanner />
+
+    <main id="main" class="main" tabindex="-1">
+        @* A crash inside one page shows a friendly message instead of killing the whole tab. *@
+        <ErrorBoundary @ref="_boundary">
+            <ChildContent>
+                @Body
+            </ChildContent>
+            <ErrorContent Context="exception">
+                <section class="crash" role="alert">
+                    <h1>Something went wrong on this page</h1>
+                    <p>Your cart and orders are safe. Try again, or go back to the menu.</p>
+                    <div class="crash-actions">
+                        <Button Variant="ButtonVariant.Primary" Icon="refresh-cw" OnClick="Recover">Try again</Button>
+                        <a class="btn-link" href="">Back to the menu</a>
+                    </div>
+                    @if (Environment.IsDevelopment())
+                    {
+                        <pre class="crash-details">@exception.GetType().Name: @exception.Message</pre>
+                    }
+                </section>
+            </ErrorContent>
+        </ErrorBoundary>
+    </main>
+
+    <BottomNav />
+</div>
+
+<ToastHost />
+
+<div id="blazor-error-ui" data-nosnippet>
+    The connection to the server was interrupted.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss" role="button" tabindex="0" aria-label="Dismiss">×</span>
+</div>
+
+@code {
+    private ErrorBoundary? _boundary;
+
+    protected override void OnInitialized() => Navigation.LocationChanged += OnLocationChanged;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Browser storage is only reachable once the page is interactive (not during prerendering).
+        if (firstRender && RendererInfo.IsInteractive)
+        {
+            await Cart.LoadAsync();
+        }
+    }
+
+    private void Recover()
+    {
+        Logger.LogInformation("User recovered from an error on {Uri}", Navigation.Uri);
+        _boundary?.Recover();
+    }
+
+    // Leaving a broken page clears the error, so the next page renders normally.
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _boundary?.Recover();
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+}

@@ -1,0 +1,13 @@
+﻿@page "/not-found"
+@layout MainLayout
+
+<PageTitle>@UiText.Title("Page not found")</PageTitle>
+
+<EmptyState Title="Page not found" Icon="search" HeadingLevel="1">
+    <ChildContent>
+        <p>This page does not exist. The link may be old or mistyped; the menu is always one tap away.</p>
+    </ChildContent>
+    <Actions>
+        <a class="btn-cta" href="">Open the menu</a>
+    </Actions>
+</EmptyState>

@@ -1,0 +1,87 @@
+@*
+  Pickup-time picker laid out like a timetable: one row per hour, one button per slot.
+  Each slot shows how full it is, so students spread out instead of all choosing 12:00.
+  Controlled component: the page owns the selected value (Selected / SelectedChanged).
+*@
+<section class="slots" aria-labelledby="slots-title">
+    <div class="slots-head">
+        <h2 id="slots-title">Pickup time</h2>
+        @if (Day is not null)
+        {
+            <span class="slots-day">@Day.Title</span>
+        }
+    </div>
+
+    @if (!AcceptingOrders)
+    {
+        <p class="slots-note slots-paused" role="status"><Icon Name="pause" Size="18" /> New orders are paused. @PauseMessage</p>
+    }
+    else if (Day is null)
+    {
+        <Skeleton Lines="4" Height="2.75rem" />
+    }
+    else if (!Day.HasBookableSlots)
+    {
+        <p class="slots-note" role="status">No pickup times are left for @Day.Title.ToLowerInvariant(). After closing time the canteen takes orders for the next day.</p>
+    }
+    else
+    {
+        <p class="slots-legend muted">
+            <span><i class="legend legend-ok"></i>Quiet</span>
+            <span><i class="legend legend-busy"></i>Busy</span>
+            <span><i class="legend legend-full"></i>Full</span>
+        </p>
+        <div class="slot-hours" role="radiogroup" aria-labelledby="slots-title">
+            @foreach (var hour in Day.Slots.GroupBy(s => s.Start.Hour))
+            {
+                <div class="slot-hour">
+                    <span class="slot-hour-label num" aria-hidden="true">@($"{hour.Key:00}:00")</span>
+                    <div class="slot-row">
+                        @foreach (var slot in hour)
+                        {
+                            var selected = Selected == slot.Start;
+                            <button type="button" role="radio" aria-checked="@(selected ? "true" : "false")"
+                                    class="slot slot-@slot.State.ToString().ToLowerInvariant() @(selected ? "is-selected" : null)"
+                                    disabled="@(!slot.IsBookable)"
+                                    aria-label="@AriaLabel(slot)"
+                                    @onclick="() => SelectAsync(slot)">
+                                <span class="slot-time num">@slot.Start.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture)</span>
+                                <LoadBar Percent="slot.LoadPercent" Label="@($"{slot.Label} load")" />
+                                <span class="slot-note">@Note(slot)</span>
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter] public SlotDay? Day { get; set; }
+
+    [Parameter] public bool AcceptingOrders { get; set; } = true;
+
+    [Parameter] public string? PauseMessage { get; set; }
+
+    [Parameter] public DateTimeOffset? Selected { get; set; }
+
+    [Parameter] public EventCallback<DateTimeOffset?> SelectedChanged { get; set; }
+
+    private Task SelectAsync(SlotOption slot) => slot.IsBookable ? SelectedChanged.InvokeAsync(slot.Start) : Task.CompletedTask;
+
+    private static string Note(SlotOption slot) => slot.State switch
+    {
+        SlotState.Full => "Full",
+        SlotState.TooSoon => "Too soon",
+        SlotState.Busy => $"{slot.Remaining} left",
+        _ => "Quiet",
+    };
+
+    private static string AriaLabel(SlotOption slot) => slot.State switch
+    {
+        SlotState.Full => $"{slot.Label}, fully booked",
+        SlotState.TooSoon => $"{slot.Label}, too soon to cook",
+        _ => $"{slot.Label}, {slot.Remaining} of {slot.Capacity} places free",
+    };
+}

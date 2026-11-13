@@ -1,0 +1,103 @@
+@page "/kitchen/stock"
+@layout KitchenLayout
+@attribute [Authorize(Policy = Policies.Kitchen)]
+@implements IDisposable
+@inject LiveMenu LiveMenu
+@inject MenuService MenuService
+@inject ToastService Toasts
+
+<PageTitle>@UiText.Title("Stop list")</PageTitle>
+
+<PageHeader Title="Stop list">
+    Hide a dish when it runs out, or add portions when you cook more. Students see the change instantly.
+</PageHeader>
+
+<div class="stock-tools">
+    <SearchBox Value="@_search" ValueChanged="v => _search = v" Placeholder="Find a dish" Label="Find a dish" />
+</div>
+
+<DataTable TItem="MenuItemDto" Items="Visible" RowKey="i => i.Id" PageSize="0" Caption="Dishes and remaining portions"
+           RowClass="@(i => i.IsAvailable ? null : "row-hidden")">
+    <Columns>
+        <DataColumn TItem="MenuItemDto" Title="Dish" SortBy="i => i.Name">
+            <span class="stock-dish"><DishTile Emoji="@context.Emoji" ImageUrl="@context.ImageUrl" TintKey="context.CategoryId" Small="true" /> @context.Name</span>
+        </DataColumn>
+        <DataColumn TItem="MenuItemDto" Title="Left today" SortBy="i => i.RemainingStock">
+            <span class="stock-left">
+                <span class="num"><strong>@context.RemainingStock</strong> of @context.DailyStock</span>
+                <LoadBar Percent="@SoldPercent(context)" Label="@($"{context.Name} sold share")" />
+            </span>
+        </DataColumn>
+        <DataColumn TItem="MenuItemDto" Title="On the menu" SortBy="i => i.IsAvailable">
+            <label class="switch">
+                <input type="checkbox" role="switch" checked="@context.IsAvailable" disabled="@_busy.Contains(context.Id)"
+                       @onchange="e => SetAvailableAsync(context, e.Value is true)" aria-label="@($"{context.Name} available")" />
+                <span>@(context.IsAvailable ? "Available" : "Hidden")</span>
+            </label>
+        </DataColumn>
+        <DataColumn TItem="MenuItemDto" Title="Cooked more" AlignEnd="true">
+            <span class="stock-actions">
+                <Button Size="ButtonSize.Small" Disabled="@_busy.Contains(context.Id)" OnClick="() => RestockAsync(context, 5)" aria-label="@($"Add 5 portions of {context.Name}")">+5</Button>
+                <Button Size="ButtonSize.Small" Disabled="@_busy.Contains(context.Id)" OnClick="() => RestockAsync(context, 10)" aria-label="@($"Add 10 portions of {context.Name}")">+10</Button>
+            </span>
+        </DataColumn>
+    </Columns>
+</DataTable>
+
+@code {
+    private readonly HashSet<Guid> _busy = [];
+    private string? _search;
+
+    private IReadOnlyList<MenuItemDto> Visible => LiveMenu.Menu.Items
+        .Where(i => string.IsNullOrWhiteSpace(_search) || i.Name.Contains(_search, StringComparison.OrdinalIgnoreCase))
+        .OrderBy(i => i.RemainingStock == 0 ? 0 : 1)
+        .ThenBy(i => i.Name, StringComparer.CurrentCulture)
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        LiveMenu.Changed += OnChanged;
+        await LiveMenu.EnsureLoadedAsync(RendererInfo.IsInteractive);
+    }
+
+    private static int SoldPercent(MenuItemDto item) =>
+        item.DailyStock == 0 ? 100 : 100 - (item.RemainingStock * 100 / item.DailyStock);
+
+    private async Task SetAvailableAsync(MenuItemDto item, bool available)
+    {
+        _busy.Add(item.Id);
+        var result = await MenuService.SetAvailabilityAsync(item.Id, available);
+        _busy.Remove(item.Id);
+        if (result.IsFailure)
+        {
+            Toasts.Error(result.Error.Message);
+        }
+        else
+        {
+            Toasts.Info(available ? $"{item.Name} is back on the menu." : $"{item.Name} is hidden from the menu.");
+        }
+
+        await LiveMenu.RefreshAsync();
+    }
+
+    private async Task RestockAsync(MenuItemDto item, int portions)
+    {
+        _busy.Add(item.Id);
+        var result = await MenuService.RestockAsync(item.Id, portions);
+        _busy.Remove(item.Id);
+        if (result.IsFailure)
+        {
+            Toasts.Error(result.Error.Message);
+        }
+        else
+        {
+            Toasts.Success($"+{portions} portions of {item.Name}.");
+        }
+
+        await LiveMenu.RefreshAsync();
+    }
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => LiveMenu.Changed -= OnChanged;
+}

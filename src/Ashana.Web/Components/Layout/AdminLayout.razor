@@ -1,0 +1,16 @@
+@* Admin area: nested inside MainLayout, adds the admin tabs. *@
+@inherits LayoutComponentBase
+@layout MainLayout
+
+<SectionNav Label="Administration" Links="Links" />
+@Body
+
+@code {
+    private static readonly IReadOnlyList<SectionNav.Item> Links =
+    [
+        new("admin", "Dashboard", "chart-column", Exact: true),
+        new("admin/menu", "Menu", "utensils-crossed"),
+        new("admin/settings", "Settings", "settings"),
+        new("admin/users", "Users", "users"),
+    ];
+}

@@ -1,0 +1,15 @@
+@* Grey placeholder shown while data loads, so the layout does not jump when it arrives. *@
+<div class="skeleton-group" aria-hidden="true">
+    @for (var i = 0; i < Lines; i++)
+    {
+        <span class="skeleton" style="height:@Height; width:@(i == Lines - 1 && Lines > 1 ? "60%" : Width)"></span>
+    }
+</div>
+
+@code {
+    [Parameter] public int Lines { get; set; } = 1;
+
+    [Parameter] public string Height { get; set; } = "1rem";
+
+    [Parameter] public string Width { get; set; } = "100%";
+}

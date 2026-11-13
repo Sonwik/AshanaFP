@@ -1,0 +1,24 @@
+@* Small status label. Color is never the only signal: the text always says the status. *@
+<span class="badge badge-@Tone.ToString().ToLowerInvariant() @(Strong ? "badge-strong" : null) @Class" @attributes="AdditionalAttributes">
+    @if (Dot)
+    {
+        <span class="badge-dot" aria-hidden="true"></span>
+    }
+    @ChildContent
+</span>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public Tone Tone { get; set; } = Tone.Neutral;
+
+    /// <summary>Shows a colored dot before the text (used for live statuses).</summary>
+    [Parameter] public bool Dot { get; set; }
+
+    /// <summary>Filled style for high emphasis.</summary>
+    [Parameter] public bool Strong { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+}

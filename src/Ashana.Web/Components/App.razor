@@ -1,0 +1,44 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <base href="/" />
+    <meta name="description" content="Pre-order canteen food and pick it up at a chosen time, without standing in the queue." />
+    <meta name="theme-color" content="#0b7380" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    @* Runs before the first paint, so a dark-theme user never sees a white flash. External file: the CSP allows no inline scripts. *@
+    <script src="@Assets["js/theme-init.js"]"></script>
+    <ResourcePreloader />
+    <link rel="preload" href="_content/Ashana.UI/fonts/onest-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="_content/Ashana.UI/fonts/unbounded-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="@Assets["_content/Ashana.UI/ashana-ui.css"]" />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["Ashana.Web.styles.css"]" />
+    <HeadOutlet @rendermode="PageRenderMode" />
+</head>
+
+<body>
+    <Routes @rendermode="PageRenderMode" />
+    <ReconnectModal />
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script type="module" src="@Assets["js/app.js"]"></script>
+</body>
+
+</html>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    /// <summary>
+    /// Interactive (Blazor Server) everywhere, except pages marked [ExcludeFromInteractiveRouting]:
+    /// sign-in and sign-up must be plain HTTP forms because only they can set the auth cookie,
+    /// and the TV board is a lightweight static page with its own SignalR connection.
+    /// </summary>
+    private IComponentRenderMode? PageRenderMode =>
+        HttpContext.AcceptsInteractiveRouting() ? InteractiveServer : null;
+}

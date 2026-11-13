@@ -1,0 +1,25 @@
+@* Phones and tablets: a sticky bar above the bottom navigation with the order total and the next step. *@
+@implements IDisposable
+@inject CartState Cart
+
+@if (Cart.IsLoaded && !Cart.IsEmpty)
+{
+    <div class="cart-bar" role="region" aria-label="Your order summary">
+        <div class="cart-bar-text">
+            <span class="cart-bar-count">@UiText.Portions(Cart.Count)</span>
+            <strong class="num">@Money.Tenge(Cart.Total)</strong>
+        </div>
+        <a class="cart-bar-go" href="checkout">
+            Choose pickup time
+            <Icon Name="chevron-right" Size="18" />
+        </a>
+    </div>
+}
+
+@code {
+    protected override void OnInitialized() => Cart.Changed += OnChanged;
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Cart.Changed -= OnChanged;
+}

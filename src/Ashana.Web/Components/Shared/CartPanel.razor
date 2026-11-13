@@ -1,0 +1,93 @@
+@*
+  The order being built: lines with quantity steppers and the total.
+  Reads CartState directly (it is the cart's state container) and re-renders when it changes.
+  The footer slot lets each page put its own button below (menu: "Choose pickup time", checkout: nothing).
+*@
+@implements IDisposable
+@inject CartState Cart
+@inject LiveMenu Menu
+@inject ToastService Toasts
+
+<section class="cart-panel @Class" aria-labelledby="@_titleId">
+    <header class="cart-head">
+        <h2 id="@_titleId">@Title</h2>
+        @if (!Cart.IsEmpty && AllowClear)
+        {
+            <button type="button" class="cart-clear" @onclick="ClearAsync">Clear</button>
+        }
+    </header>
+
+    @if (!Cart.IsLoaded)
+    {
+        <Skeleton Lines="3" Height="2.25rem" />
+    }
+    else if (Cart.IsEmpty)
+    {
+        <p class="cart-empty">Your order is empty. Add dishes from the menu.</p>
+    }
+    else
+    {
+        <ul class="cart-lines">
+            @foreach (var line in Cart.Lines)
+            {
+                var stock = Menu.Menu.Find(line.MenuItemId)?.RemainingStock;
+                <li @key="line.MenuItemId" class="cart-line">
+                    <span class="cart-emoji" aria-hidden="true">@line.Emoji</span>
+                    <span class="cart-name">
+                        @line.Name
+                        <span class="cart-unit num">@Money.Tenge(line.UnitPrice)</span>
+                    </span>
+                    <QuantityStepper Value="line.Quantity" Max="@Math.Min(OrderErrors.MaxQuantityPerLine, Math.Max(line.Quantity, stock ?? OrderErrors.MaxQuantityPerLine))"
+                                     ValueChanged="qty => ChangeAsync(line.MenuItemId, qty, stock)" Label="@line.Name" Compact="true" />
+                    <span class="cart-sum num">@Money.Tenge(line.LineTotal)</span>
+                </li>
+            }
+        </ul>
+        <div class="cart-total">
+            <span>Total, paid at the counter</span>
+            <strong class="num">@Money.Tenge(Cart.Total)</strong>
+        </div>
+    }
+
+    @if (Footer is not null && Cart.IsLoaded && !Cart.IsEmpty)
+    {
+        <div class="cart-foot">@Footer</div>
+    }
+</section>
+
+@code {
+    private readonly string _titleId = "cart-" + Guid.NewGuid().ToString("N")[..6];
+
+    [Parameter] public string Title { get; set; } = "Your order";
+
+    [Parameter] public RenderFragment? Footer { get; set; }
+
+    [Parameter] public bool AllowClear { get; set; } = true;
+
+    [Parameter] public string? Class { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Cart.Changed += OnChanged;
+        Menu.Changed += OnChanged;
+    }
+
+    private async Task ChangeAsync(Guid menuItemId, int quantity, int? stock)
+    {
+        var result = await Cart.SetQuantityAsync(menuItemId, quantity, stock);
+        if (result.IsFailure)
+        {
+            Toasts.Warning(result.Error.Message);
+        }
+    }
+
+    private Task ClearAsync() => Cart.ClearAsync();
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Cart.Changed -= OnChanged;
+        Menu.Changed -= OnChanged;
+    }
+}

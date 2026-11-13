@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Integration tests: the real web app (Kestrel on a random local port) driven over HTTP and WebSockets.
+    Covers sign-in, roles, antiforgery, security headers, the JSON API, error pages and the SignalR hub.
+    Run with: dotnet test tests/Ashana.IntegrationTests
+  -->
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Same versions as the .NET 10 SDK "xunit" project template. -->
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Ashana.Web\Ashana.Web.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <!--
+    The app finds its static files through manifests named after the app ("Ashana.Web.staticwebassets.*.json")
+    next to the running assembly. Copy them from the web project's output so the test host serves CSS and JS too.
+  -->
+  <Target Name="CopyWebAssetManifests" AfterTargets="Build">
+    <ItemGroup>
+      <_AshanaWebManifest Include="..\..\src\Ashana.Web\bin\$(Configuration)\$(TargetFramework)\Ashana.Web.staticwebassets.*.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_AshanaWebManifest)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

@@ -1,0 +1,43 @@
+@*
+  Pick one of a few options (payment method, period...).
+  Built on real radio buttons, so arrow keys and screen readers work without extra code.
+*@
+@typeparam TValue
+
+<fieldset class="segmented @Class">
+    <legend class="@(HideLegend ? "visually-hidden" : "segmented-legend")">@Legend</legend>
+    <div class="segments">
+        @foreach (var option in Options)
+        {
+            var id = $"{_name}-{option.Value}";
+            <input type="radio" class="visually-hidden segment-input" id="@id" name="@_name"
+                   checked="@(EqualityComparer<TValue>.Default.Equals(option.Value, Value))"
+                   @onchange="() => SelectAsync(option.Value)" />
+            <label for="@id" class="segment">
+                @if (option.Icon is not null)
+                {
+                    <Icon Name="@option.Icon" Size="18" />
+                }
+                @option.Text
+            </label>
+        }
+    </div>
+</fieldset>
+
+@code {
+    private readonly string _name = "seg-" + Guid.NewGuid().ToString("N")[..8];
+
+    [Parameter, EditorRequired] public IReadOnlyList<SegmentOption<TValue>> Options { get; set; } = [];
+
+    [Parameter] public TValue Value { get; set; } = default!;
+
+    [Parameter] public EventCallback<TValue> ValueChanged { get; set; }
+
+    [Parameter, EditorRequired] public string Legend { get; set; } = string.Empty;
+
+    [Parameter] public bool HideLegend { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private Task SelectAsync(TValue value) => ValueChanged.InvokeAsync(value);
+}

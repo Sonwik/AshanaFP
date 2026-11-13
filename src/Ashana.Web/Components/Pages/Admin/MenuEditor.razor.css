@@ -1,0 +1,36 @@
+.editor-tools { display: grid; gap: 0.6rem; margin-bottom: 1rem; }
+.editor-tools ::deep .search { max-width: 26rem; }
+
+.admin-dish { display: inline-flex; align-items: center; gap: 0.7rem; min-width: 0; text-align: left; }
+.admin-dish-text { display: grid; min-width: 0; }
+.admin-desc {
+  max-width: 34ch;
+  color: var(--muted);
+  font-size: var(--step--1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row-actions { display: inline-flex; gap: 0.25rem; }
+
+.editor { display: grid; gap: 1.25rem; }
+.editor-preview {
+  display: grid;
+  gap: 0.25rem;
+  align-content: start;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--canvas);
+  border: 1px dashed var(--line-strong);
+}
+.tags-field { display: flex; flex-wrap: wrap; gap: 0.5rem 1.1rem; margin: 0; padding: 0; border: 0; }
+.tags-field legend { width: 100%; margin-bottom: 0.35rem; }
+
+@media (min-width: 900px) {
+  .editor { grid-template-columns: minmax(0, 1fr) 19rem; align-items: start; }
+  .editor-preview { position: sticky; top: 0; }
+  .editor-preview ::deep .dish { grid-template-columns: auto 1fr; grid-template-areas: "tile body" "tile action"; }
+}
+@media (max-width: 699px) {
+  .admin-desc { display: none; }
+}

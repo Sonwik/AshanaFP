@@ -1,0 +1,32 @@
+.segmented { border: 0; margin: 0; padding: 0; min-width: 0; }
+.segmented-legend { padding: 0; margin-bottom: 0.35rem; font-weight: 600; font-size: var(--step--1); }
+.segments {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  background: var(--canvas);
+  border: 1px solid var(--line);
+}
+.segment {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.5rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: calc(var(--radius-sm) - 3px);
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+}
+.segment:hover { color: var(--ink); }
+.segment-input:checked + .segment {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow-1), inset 0 0 0 1px var(--line-strong);
+}
+.segment-input:focus-visible + .segment { box-shadow: var(--focus-ring); }

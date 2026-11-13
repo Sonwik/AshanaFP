@@ -1,0 +1,25 @@
+.section-nav {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.25rem;
+  padding: 0.25rem;
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  scrollbar-width: none;
+}
+.section-nav::-webkit-scrollbar { display: none; }
+.section-nav ::deep a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: calc(var(--radius-sm) - 3px);
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.section-nav ::deep a:hover { color: var(--ink); background: var(--canvas); }
+.section-nav ::deep a.active { color: var(--tile-strong); background: var(--tile-soft); }

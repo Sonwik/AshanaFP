@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Ashana.Infrastructure: the side effects. The state store (the one mutable reference), the JSON file,
+    password hashing, the event bus, background jobs and demo data.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ashana.Application\Ashana.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Hosting, Identity password hasher, options, logging, health checks -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ashana.UnitTests" />
+    <InternalsVisibleTo Include="Ashana.IntegrationTests" />
+  </ItemGroup>
+
+</Project>

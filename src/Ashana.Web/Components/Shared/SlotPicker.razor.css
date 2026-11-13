@@ -1,0 +1,47 @@
+.slots { display: grid; gap: 0.75rem; }
+.slots-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.slots-head h2 { font-size: var(--step-1); }
+.slots-day { color: var(--tile-strong); font-weight: 700; }
+.slots-note { color: var(--muted); }
+.slots-paused { display: flex; gap: 0.5rem; align-items: center; color: var(--cooking); }
+
+.slots-legend { display: flex; gap: 1rem; font-size: var(--step--1); }
+.slots-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.legend { display: inline-block; width: 0.9rem; height: 0.3rem; border-radius: 4px; }
+.legend-ok { background: var(--ready); }
+.legend-busy { background: var(--saffron); }
+.legend-full { background: var(--danger); }
+
+.slot-hours { display: grid; gap: 0.5rem; }
+.slot-hour { display: grid; grid-template-columns: 3.25rem 1fr; align-items: center; gap: 0.5rem; }
+.slot-hour-label { color: var(--muted); font-weight: 700; font-size: var(--step--1); }
+.slot-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.4rem; }
+
+.slot {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.45rem 0.5rem 0.4rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-xs);
+  background: var(--paper);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms, background-color 120ms;
+}
+.slot:hover:not(:disabled) { border-color: var(--tile); }
+.slot-time { font-weight: 700; }
+.slot-note { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slot:disabled { cursor: not-allowed; background: var(--canvas); color: var(--muted); border-style: dashed; }
+.slot.is-selected {
+  border-color: var(--tile);
+  background: var(--tile);
+  color: var(--on-tile);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tile) 25%, transparent);
+}
+.slot.is-selected .slot-note { color: inherit; opacity: 0.9; }
+.slot.is-selected ::deep .load { background: color-mix(in srgb, var(--on-tile) 35%, transparent); }
+
+@media (min-width: 600px) {
+  .slot-row { grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); }
+}

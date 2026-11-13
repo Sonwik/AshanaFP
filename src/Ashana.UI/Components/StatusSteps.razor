@@ -1,0 +1,35 @@
+@* Progress through a sequence of steps (order status). It is a real sequence, so it is an ordered list. *@
+<ol class="steps @(Vertical ? "steps-vertical" : null) @Class" aria-label="@Label">
+    @foreach (var step in Steps)
+    {
+        <li class="step step-@step.State.ToString().ToLowerInvariant()" aria-current="@(step.State == StepState.Current ? "step" : null)">
+            <span class="step-dot" aria-hidden="true">
+                @if (step.State == StepState.Done)
+                {
+                    <Icon Name="check" Size="14" StrokeWidth="3" />
+                }
+                else if (step.State == StepState.Failed)
+                {
+                    <Icon Name="x" Size="14" StrokeWidth="3" />
+                }
+            </span>
+            <span class="step-text">
+                <span class="step-label">@step.Label</span>
+                @if (step.Detail is not null)
+                {
+                    <span class="step-detail">@step.Detail</span>
+                }
+            </span>
+        </li>
+    }
+</ol>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<StepItem> Steps { get; set; } = [];
+
+    [Parameter] public string Label { get; set; } = "Progress";
+
+    [Parameter] public bool Vertical { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+}

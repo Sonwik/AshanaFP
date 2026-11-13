@@ -1,0 +1,298 @@
+@page "/kitchen"
+@layout KitchenLayout
+@attribute [Authorize(Policy = Policies.Kitchen)]
+@implements IDisposable
+@inject Ashana.Application.Kitchen.KitchenService Kitchen
+@inject Ashana.Application.Settings.SettingsService Settings
+@inject IEventSubscriber Events
+@inject Ticker Ticker
+@inject AshanaJs Js
+@inject ToastService Toasts
+@inject CanteenClock Clock
+
+<PageTitle>@UiText.Title("Kitchen")</PageTitle>
+
+<PageHeader Title="Orders">
+    <ChildContent>
+        @if (_board is not null)
+        {
+            <span>@_board.ActiveCount active</span>
+            @if (_board.LateCount > 0)
+            {
+                <span class="late-count"><Icon Name="timer" Size="16" /> @_board.LateCount late</span>
+            }
+        }
+    </ChildContent>
+    <Actions>
+        <Button Variant="ButtonVariant.Ghost" Icon="@(_sound ? "volume-2" : "volume-x")" OnClick="ToggleSoundAsync"
+                aria-pressed="@(_sound ? "true" : "false")">@(_sound ? "Sound on" : "Sound off")</Button>
+        <a class="btn-link" href="board" target="_blank" rel="noopener"><Icon Name="tv" Size="18" /> TV screen</a>
+        @if (_board?.AcceptingOrders == false)
+        {
+            <Button Variant="ButtonVariant.Primary" Icon="play" Busy="_pausing" OnClick="ResumeAsync">Resume orders</Button>
+        }
+        else
+        {
+            <Button Icon="pause" Busy="_pausing" OnClick="PauseAsync">Pause new orders</Button>
+        }
+    </Actions>
+</PageHeader>
+
+@if (_board is null)
+{
+    <Skeleton Lines="3" Height="8rem" />
+}
+else
+{
+    <div class="board-tabs">
+        <ChipGroup TValue="OrderStatus" Value="_mobileColumn" ValueChanged="v => _mobileColumn = v" AriaLabel="Show column">
+            <Chip TValue="OrderStatus" Value="OrderStatus.Placed" Count="_board.Placed.Count">New</Chip>
+            <Chip TValue="OrderStatus" Value="OrderStatus.Cooking" Count="_board.Cooking.Count">Cooking</Chip>
+            <Chip TValue="OrderStatus" Value="OrderStatus.Ready" Count="_board.Ready.Count">Ready</Chip>
+        </ChipGroup>
+    </div>
+
+    <div class="board">
+        @foreach (var (status, title, hint, orders) in Columns)
+        {
+            <section class="board-col @(status == _mobileColumn ? "is-visible" : null)" aria-labelledby="@($"col-{status}")" data-column="@status">
+                <header class="board-col-head">
+                    <h2 id="@($"col-{status}")">@title <span class="board-count num">@orders.Count</span></h2>
+                    <p class="muted">@hint</p>
+                </header>
+                @if (orders.Count == 0)
+                {
+                    <p class="board-empty">@EmptyText(status)</p>
+                }
+                <div class="board-cards">
+                    @foreach (var order in orders)
+                    {
+                        <KitchenDocket @key="order.Id" Order="order" Now="_now" Busy="_busy.Contains(order.Id)"
+                                       IsNew="_fresh.Contains(order.Id)" OnAdvance="AdvanceAsync" OnCancel="CancelAsync" />
+                    }
+                </div>
+            </section>
+        }
+    </div>
+
+    @if (_board.RecentlyFinished.Count > 0)
+    {
+        <details class="finished">
+            <summary>Finished in the last 45 minutes (@_board.RecentlyFinished.Count)</summary>
+            <ul>
+                @foreach (var order in _board.RecentlyFinished)
+                {
+                    <li>
+                        <span class="num finished-number">@order.Number</span>
+                        <OrderStatusBadge Status="order.Status" Strong="false" />
+                        <span class="muted">@order.CustomerName, @UiText.Summary(order.Lines)</span>
+                    </li>
+                }
+            </ul>
+        </details>
+    }
+}
+
+<ConfirmDialog @ref="_confirm" />
+
+@code {
+    private readonly HashSet<Guid> _busy = [];
+    private readonly HashSet<Guid> _fresh = [];
+    private readonly Debouncer _reload = new(TimeSpan.FromMilliseconds(150));
+    private Ashana.Application.Kitchen.KitchenBoard? _board;
+    private IDisposable? _subscription;
+    private ConfirmDialog? _confirm;
+    private DateTimeOffset _now;
+    private OrderStatus _mobileColumn = OrderStatus.Placed;
+    private bool _sound;
+    private bool _pausing;
+
+    private IEnumerable<(OrderStatus Status, string Title, string Hint, IReadOnlyList<OrderDto> Orders)> Columns =>
+    [
+        (OrderStatus.Placed, "New", "Sorted by pickup time", _board!.Placed),
+        (OrderStatus.Cooking, "Cooking", "Being prepared", _board.Cooking),
+        (OrderStatus.Ready, "Ready", "Waiting at the counter", _board.Ready),
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _now = Clock.Now;
+        await LoadAsync();
+
+        if (RendererInfo.IsInteractive)
+        {
+            _subscription = Events.Subscribe<OrderChanged>(OnOrderChanged);
+            Ticker.Tick += OnTick;
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _board = await Kitchen.GetBoardAsync();
+        _now = _board.Now;
+    }
+
+    private Task OnOrderChanged(OrderChanged change)
+    {
+        if (change.Kind == OrderChangeKind.Placed)
+        {
+            _ = InvokeAsync(async () =>
+            {
+                _fresh.Add(change.Order.Id);
+                Toasts.Info($"New order {change.Order.Code} for {change.Order.SlotLabel}.");
+                if (_sound)
+                {
+                    await Js.ChimeAsync();
+                }
+            });
+            _ = ForgetFreshAsync(change.Order.Id);
+        }
+
+        _reload.Run(() => InvokeAsync(async () =>
+        {
+            await LoadAsync();
+            StateHasChanged();
+        }));
+        return Task.CompletedTask;
+    }
+
+    private async Task ForgetFreshAsync(Guid id)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(8));
+        await InvokeAsync(() =>
+        {
+            _fresh.Remove(id);
+            StateHasChanged();
+        });
+    }
+
+    private void OnTick() => _ = InvokeAsync(() =>
+    {
+        _now = Clock.Now;
+        StateHasChanged();
+    });
+
+    private async Task AdvanceAsync(OrderDto order)
+    {
+        if (!_busy.Add(order.Id))
+        {
+            return;
+        }
+
+        var result = await Kitchen.AdvanceAsync(order.Id, order.Status);
+        _busy.Remove(order.Id);
+
+        if (result.IsFailure)
+        {
+            Toasts.Error(result.Error.Message);
+        }
+        else if (result.Value.Status == OrderStatus.PickedUp)
+        {
+            Toasts.Success($"Order {result.Value.Code} handed over.");
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task CancelAsync(OrderDto order)
+    {
+        if (_confirm is null)
+        {
+            return;
+        }
+
+        var reason = await _confirm.AskForReasonAsync(
+            $"Cancel order {order.Code}?",
+            $"{order.CustomerName} will see the reason on their phone right away.",
+            "Reason",
+            "Cancel order",
+            "Ran out of an ingredient");
+        if (reason is null)
+        {
+            return;
+        }
+
+        _busy.Add(order.Id);
+        var result = await Kitchen.CancelAsync(order.Id, reason);
+        _busy.Remove(order.Id);
+        if (result.IsFailure)
+        {
+            Toasts.Error(result.Error.Message);
+        }
+        else
+        {
+            Toasts.Info($"Order {order.Code} cancelled.");
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task PauseAsync()
+    {
+        if (_confirm is null)
+        {
+            return;
+        }
+
+        var message = await _confirm.AskForReasonAsync(
+            "Pause new orders?",
+            "Students will see this message and cannot order until you resume. Orders already placed are not affected.",
+            "Message for students",
+            "Pause orders",
+            "The kitchen is very busy. New orders are paused for a few minutes.");
+        if (message is null)
+        {
+            return;
+        }
+
+        _pausing = true;
+        var result = await Settings.SetAcceptingOrdersAsync(false, message);
+        _pausing = false;
+        if (result.IsFailure)
+        {
+            Toasts.Error(result.Error.Message);
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task ResumeAsync()
+    {
+        _pausing = true;
+        var result = await Settings.SetAcceptingOrdersAsync(true, null);
+        _pausing = false;
+        if (result.IsFailure)
+        {
+            Toasts.Error(result.Error.Message);
+        }
+        else
+        {
+            Toasts.Success("Orders resumed.");
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task ToggleSoundAsync()
+    {
+        _sound = !_sound;
+        if (_sound)
+        {
+            await Js.ChimeAsync(); // also unlocks audio: browsers require a click before playing sound
+        }
+    }
+
+    private static string EmptyText(OrderStatus status) => status switch
+    {
+        OrderStatus.Placed => "No new orders. They appear here the moment a student orders.",
+        OrderStatus.Cooking => "Nothing is cooking. Start an order from the New column.",
+        _ => "No orders are waiting at the counter.",
+    };
+
+    public void Dispose()
+    {
+        _subscription?.Dispose();
+        _reload.Dispose();
+        Ticker.Tick -= OnTick;
+    }
+}

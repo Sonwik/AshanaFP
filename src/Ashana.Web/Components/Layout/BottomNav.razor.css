@@ -1,0 +1,30 @@
+.bottomnav {
+  position: fixed;
+  z-index: 40;
+  inset-inline: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: space-around;
+  padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line);
+}
+.bottomnav ::deep a {
+  flex: 1;
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+  padding: 0.35rem 0.25rem;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.bottomnav ::deep a.active { color: var(--tile-strong); }
+.bottomnav ::deep a.active .icon { color: var(--tile); }
+
+@media (min-width: 900px) {
+  .bottomnav { display: none; }
+}

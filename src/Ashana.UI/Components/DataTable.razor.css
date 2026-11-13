@@ -1,0 +1,61 @@
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+}
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { padding: 0.7rem 0.9rem; text-align: left; vertical-align: middle; }
+.table th {
+  position: sticky;
+  top: 0;
+  background: var(--canvas);
+  color: var(--muted);
+  font-size: var(--step--1);
+  font-weight: 650;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.table tbody tr + tr td { border-top: 1px solid var(--line); }
+.table tbody tr:hover td { background: color-mix(in srgb, var(--tile-soft) 45%, transparent); }
+.align-end { text-align: right !important; }
+.empty-row td { padding: 2rem; text-align: center; color: var(--muted); }
+
+.sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.sort:hover { color: var(--ink); }
+.sort ::deep .sort-icon { transition: transform 150ms; }
+.sort ::deep .sort-icon.idle { opacity: 0.3; }
+.sort ::deep .sort-icon.flipped { transform: rotate(180deg); }
+
+.pager { display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; margin-top: 0.75rem; }
+.pager-text { color: var(--muted); font-size: var(--step--1); }
+
+/* Phones: every row becomes a small card with labels, so nothing scrolls sideways. */
+@media (max-width: 699px) {
+  .table-wrap { border: 0; background: transparent; overflow: visible; }
+  .table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
+  .table tbody tr {
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.25rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--paper);
+  }
+  .table tbody tr + tr td { border-top: 0; }
+  .table td { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.4rem 0.75rem; text-align: right; }
+  .table td::before { content: attr(data-label); color: var(--muted); font-weight: 600; text-align: left; }
+  .table td[data-label=""]::before { content: none; }
+  .empty-row td { display: block; text-align: center; }
+  .empty-row td::before { content: none; }
+}

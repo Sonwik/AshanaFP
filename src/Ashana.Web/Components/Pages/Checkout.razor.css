@@ -1,0 +1,10 @@
+.checkout { display: grid; gap: 1.25rem; }
+.checkout-main { display: grid; gap: 1.25rem; min-width: 0; }
+.checkout-extra { display: grid; gap: 1.1rem; }
+.checkout-aside { display: grid; gap: 0.9rem; align-content: start; }
+.checkout-note { text-align: center; font-size: var(--step--1); }
+
+@media (min-width: 1000px) {
+  .checkout { grid-template-columns: minmax(0, 1fr) 23rem; align-items: start; }
+  .checkout-aside { position: sticky; top: calc(var(--topbar-h) + 1.5rem); }
+}

@@ -1,0 +1,76 @@
+@*
+  "Are you sure?" dialog that can be awaited:
+      if (await confirm.AskAsync("Cancel order #107?", "...", "Cancel order", danger: true)) { ... }
+  Uses a TaskCompletionSource, so the calling code reads top to bottom instead of juggling callbacks.
+*@
+<Modal @bind-Open="_open" Title="@_title" Size="ModalSize.Small" OnClosed="OnClosed">
+    <ChildContent>
+        <p class="confirm-text">@_message</p>
+        @if (_withReason)
+        {
+            <div class="field confirm-reason">
+                <label for="@_reasonId">@_reasonLabel</label>
+                <input id="@_reasonId" @bind="_reason" @bind:event="oninput" maxlength="140" />
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <Button Variant="ButtonVariant.Ghost" OnClick="() => CompleteAsync(false)">@_cancelText</Button>
+        <Button Variant="@(_danger ? ButtonVariant.Danger : ButtonVariant.Primary)"
+                Disabled="@(_withReason && string.IsNullOrWhiteSpace(_reason))"
+                OnClick="() => CompleteAsync(true)">@_confirmText</Button>
+    </Footer>
+</Modal>
+
+@code {
+    private readonly string _reasonId = "reason-" + Guid.NewGuid().ToString("N")[..6];
+    private TaskCompletionSource<bool>? _pending;
+    private bool _open;
+    private string _title = string.Empty;
+    private string _message = string.Empty;
+    private string _confirmText = "Confirm";
+    private string _cancelText = "Keep";
+    private bool _danger;
+    private bool _withReason;
+    private string _reasonLabel = "Reason";
+    private string? _reason;
+
+    public Task<bool> AskAsync(string title, string message, string confirmText = "Confirm", bool danger = false, string cancelText = "Keep")
+    {
+        _withReason = false;
+        return Open(title, message, confirmText, danger, cancelText);
+    }
+
+    /// <summary>Like <see cref="AskAsync"/> but with a required text field (for example a cancellation reason).</summary>
+    /// <returns>The trimmed text, or <c>null</c> if the user cancelled.</returns>
+    public async Task<string?> AskForReasonAsync(string title, string message, string reasonLabel, string confirmText, string? suggestion = null)
+    {
+        _withReason = true;
+        _reasonLabel = reasonLabel;
+        _reason = suggestion;
+        return await Open(title, message, confirmText, danger: true, cancelText: "Keep") ? _reason?.Trim() : null;
+    }
+
+    private Task<bool> Open(string title, string message, string confirmText, bool danger, string cancelText)
+    {
+        _pending?.TrySetResult(false);
+        _pending = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _title = title;
+        _message = message;
+        _confirmText = confirmText;
+        _cancelText = cancelText;
+        _danger = danger;
+        _open = true;
+        StateHasChanged();
+        return _pending.Task;
+    }
+
+    private Task CompleteAsync(bool confirmed)
+    {
+        _pending?.TrySetResult(confirmed);
+        _open = false;
+        return Task.CompletedTask;
+    }
+
+    private void OnClosed() => _pending?.TrySetResult(false);
+}

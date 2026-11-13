@@ -1,0 +1,29 @@
+@* One key number on a dashboard. The label says what it is; the hint gives context. *@
+<div class="stat @Class">
+    <span class="stat-label">
+        @if (Icon is not null)
+        {
+            <Icon Name="@Icon" Size="16" />
+        }
+        @Label
+    </span>
+    <span class="stat-value num">@Value</span>
+    @if (Hint is not null)
+    {
+        <span class="stat-hint stat-hint-@HintTone.ToString().ToLowerInvariant()">@Hint</span>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired] public string Value { get; set; } = string.Empty;
+
+    [Parameter] public string? Hint { get; set; }
+
+    [Parameter] public Tone HintTone { get; set; } = Tone.Neutral;
+
+    [Parameter] public string? Icon { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+}

@@ -1,0 +1,16 @@
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border-radius: 50%;
+  font-size: calc(var(--avatar-size) * 0.4);
+  font-weight: 700;
+  color: #fff;
+  user-select: none;
+}
+.avatar-0 { background: #0b7380; }
+.avatar-1 { background: #23408f; }
+.avatar-2 { background: #8a5300; }
+.avatar-3 { background: #06704f; }

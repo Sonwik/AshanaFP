@@ -1,0 +1,207 @@
+@page "/checkout"
+@attribute [Authorize]
+@implements IDisposable
+@inject CartState Cart
+@inject LiveMenu LiveMenu
+@inject SlotService Slots
+@inject OrderService Orders
+@inject IEventSubscriber Events
+@inject ToastService Toasts
+@inject NavigationManager Navigation
+@inject ILogger<Checkout> Logger
+
+<PageTitle>@UiText.Title("Checkout")</PageTitle>
+
+<PageHeader Title="Choose pickup time" BackHref="" BackText="Menu">
+    Pick a time, then pay at the counter when you collect your food.
+</PageHeader>
+
+@if (Cart.IsLoaded && Cart.IsEmpty)
+{
+    <EmptyState Title="Your order is empty" Icon="shopping-bag">
+        <ChildContent><p>Add a few dishes from the menu first.</p></ChildContent>
+        <Actions><a class="btn-cta" href="">Open the menu</a></Actions>
+    </EmptyState>
+}
+else
+{
+    <div class="checkout">
+        <div class="checkout-main">
+            <section class="panel">
+                <SlotPicker Day="Day" AcceptingOrders="@(_overview?.AcceptingOrders ?? true)" PauseMessage="@_overview?.PauseMessage"
+                            Selected="_slot" SelectedChanged="OnSlotChanged" />
+            </section>
+
+            <section class="panel checkout-extra">
+                <SegmentedControl TValue="PaymentMethod" Legend="How will you pay at the counter?" Options="PaymentOptions"
+                                  Value="_payment" ValueChanged="v => _payment = v" />
+                <div class="field">
+                    <label for="order-comment">Comment for the kitchen</label>
+                    <textarea id="order-comment" maxlength="@OrderErrors.CommentMaxLength" @bind="_comment" @bind:event="oninput"
+                              placeholder="For example: no onion, sauce on the side"></textarea>
+                    <span class="field-hint">@(_comment?.Length ?? 0) of @OrderErrors.CommentMaxLength characters</span>
+                </div>
+            </section>
+        </div>
+
+        <aside class="checkout-aside">
+            <CartPanel AllowClear="false" />
+
+            @if (_adjustments.Count > 0)
+            {
+                <div class="notice" role="status">
+                    <p><strong>We updated your order to match the menu:</strong></p>
+                    <ul>
+                        @foreach (var change in _adjustments)
+                        {
+                            <li>@change.Message</li>
+                        }
+                    </ul>
+                </div>
+            }
+
+            @if (_error is not null)
+            {
+                <p class="form-error" role="alert"><Icon Name="circle-alert" Size="18" /> @_error</p>
+            }
+
+            <Button Variant="ButtonVariant.Primary" Size="ButtonSize.Large" FullWidth="true" Busy="_placing"
+                    Disabled="@(!CanPlace)" OnClick="PlaceAsync" data-testid="place-order">@PlaceText</Button>
+            <p class="checkout-note muted">You can cancel until the kitchen starts cooking.</p>
+        </aside>
+    </div>
+}
+
+@code {
+    private static readonly IReadOnlyList<SegmentOption<PaymentMethod>> PaymentOptions =
+    [
+        new(PaymentMethod.Card, "Card", "credit-card"),
+        new(PaymentMethod.Cash, "Cash", "banknote"),
+        new(PaymentMethod.Qr, "QR code", "qr-code"),
+    ];
+
+    private readonly List<IDisposable> _subscriptions = [];
+    private readonly Debouncer _refresh = new(TimeSpan.FromMilliseconds(400));
+    private SlotOverview? _overview;
+    private DateTimeOffset? _slot;
+    private PaymentMethod _payment = PaymentMethod.Card;
+    private string? _comment;
+    private string? _error;
+    private bool _placing;
+    private IReadOnlyList<Ashana.Application.Shopping.CartAdjustment> _adjustments = [];
+
+    /// <summary>Idempotency key: pressing the button twice (or a network retry) creates one order.</summary>
+    private Guid _requestId = Guid.NewGuid();
+
+    [CascadingParameter] public CurrentUser? User { get; set; }
+
+    private SlotDay? Day => _overview?.Days.FirstOrDefault();
+
+    private bool CanPlace =>
+        Cart.IsLoaded && !Cart.IsEmpty && _slot is not null && (_overview?.AcceptingOrders ?? false) && !_placing;
+
+    private string PlaceText => _slot is null
+        ? "Choose a pickup time"
+        : $"Place order, {Money.Tenge(Cart.Total)}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var live = RendererInfo.IsInteractive;
+        Cart.Changed += OnCartChanged;
+        await LiveMenu.EnsureLoadedAsync(live);
+        await LoadSlotsAsync(selectDefault: true);
+
+        if (live)
+        {
+            // Other students are booking slots right now: keep the load bars honest.
+            _subscriptions.Add(Events.Subscribe<OrderChanged>(_ => RefreshSoon()));
+            _subscriptions.Add(Events.Subscribe<SettingsChanged>(_ => RefreshSoon()));
+        }
+    }
+
+    private async Task LoadSlotsAsync(bool selectDefault)
+    {
+        _overview = await Slots.GetOverviewAsync();
+        var stillBookable = _overview.Days.SelectMany(d => d.Slots).Any(s => s.Start == _slot && s.IsBookable);
+        if (!stillBookable)
+        {
+            _slot = selectDefault ? _overview.FirstBookable?.Start : null;
+        }
+    }
+
+    /// <summary>Ten orders in a second cause one refresh.</summary>
+    private Task RefreshSoon()
+    {
+        _refresh.Run(() => InvokeAsync(async () =>
+        {
+            await LoadSlotsAsync(selectDefault: false);
+            StateHasChanged();
+        }));
+        return Task.CompletedTask;
+    }
+
+    private void OnSlotChanged(DateTimeOffset? slot)
+    {
+        _slot = slot;
+        _error = null;
+    }
+
+    private async Task PlaceAsync()
+    {
+        if (User is null || _slot is null || _placing)
+        {
+            return;
+        }
+
+        _placing = true;
+        _error = null;
+        try
+        {
+            var command = new PlaceOrderCommand(User.Id, Cart.ToRequests(), _slot.Value, _payment, _comment, _requestId);
+            var result = await Orders.PlaceOrderAsync(command);
+
+            if (result.IsSuccess)
+            {
+                await Cart.ClearAsync();
+                _requestId = Guid.NewGuid();
+                Toasts.Success($"Order {result.Value.Code} placed for {result.Value.SlotLabel}.");
+                Navigation.NavigateTo($"orders/{result.Value.Id}");
+                return;
+            }
+
+            _error = result.Error.Message;
+            if (result.Error.Code.StartsWith("menu.", StringComparison.Ordinal) || result.Error.Code == "order.price_changed")
+            {
+                // Something changed since the dish was added: refresh, fix the cart, then explain what changed.
+                await LiveMenu.RefreshAsync();
+                _adjustments = await Cart.ReconcileAsync(LiveMenu.Menu);
+            }
+
+            if (result.Error.Code.StartsWith("slot.", StringComparison.Ordinal))
+            {
+                await LoadSlotsAsync(selectDefault: false);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogError(ex, "Placing an order failed");
+            _error = "Could not place the order because of a server problem. Your cart is saved; please try again.";
+        }
+        finally
+        {
+            _placing = false;
+        }
+    }
+
+    private void OnCartChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Cart.Changed -= OnCartChanged;
+        _refresh.Dispose();
+        foreach (var subscription in _subscriptions)
+        {
+            subscription.Dispose();
+        }
+    }
+}

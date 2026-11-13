@@ -1,0 +1,8 @@
+<Badge Tone="@UiText.ToneOf(Status)" Dot="@Status.IsActive()" Strong="@(Strong && Status == OrderStatus.Ready)">@Status.Label()</Badge>
+
+@code {
+    [Parameter, EditorRequired] public OrderStatus Status { get; set; }
+
+    /// <summary>Filled style for "Ready": the one status a student must not miss.</summary>
+    [Parameter] public bool Strong { get; set; } = true;
+}

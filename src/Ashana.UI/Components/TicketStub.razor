@@ -1,0 +1,42 @@
+@*
+  The pickup ticket: the one bold element of the app. The same number in the same wide type
+  appears on the student's phone and on the TV at the counter, so they are easy to match.
+*@
+<article class="ticket ticket-@Tone.ToString().ToLowerInvariant() @(Celebrate ? "ticket-celebrate" : null) @Class" aria-label="@AriaLabel">
+    <div class="ticket-band">
+        <TileOrnament Height="30" Color="currentColor" />
+    </div>
+    <div class="ticket-main">
+        <p class="ticket-label">@Label</p>
+        <p class="ticket-number">@Number</p>
+        @if (Caption is not null)
+        {
+            <div class="ticket-caption">@Caption</div>
+        }
+    </div>
+    <div class="ticket-perforation" aria-hidden="true"></div>
+    @if (ChildContent is not null)
+    {
+        <div class="ticket-details">@ChildContent</div>
+    }
+</article>
+
+@code {
+    [Parameter, EditorRequired] public string Number { get; set; } = string.Empty;
+
+    [Parameter] public string Label { get; set; } = "Your number";
+
+    [Parameter] public RenderFragment? Caption { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Accent of the band: Info (placed), Warning (cooking), Success (ready), Neutral (done), Danger (cancelled).</summary>
+    [Parameter] public Tone Tone { get; set; } = Tone.Accent;
+
+    /// <summary>Plays a single "stamp" animation (when the order becomes ready).</summary>
+    [Parameter] public bool Celebrate { get; set; }
+
+    [Parameter] public string? AriaLabel { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+}

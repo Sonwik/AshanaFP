@@ -1,0 +1,33 @@
+.order-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color 120ms;
+}
+.order-card:hover { border-color: var(--tile); color: var(--ink); }
+.order-number {
+  display: grid;
+  place-items: center;
+  min-width: 3.5rem;
+  height: 3rem;
+  padding-inline: 0.4rem;
+  border-radius: var(--radius-xs);
+  background: var(--canvas);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+.is-active .order-number { background: var(--tile-soft); color: var(--tile-strong); }
+.status-ready .order-number { background: var(--ready); color: var(--paper); }
+.order-main { display: grid; gap: 0.2rem; min-width: 0; }
+.order-line1 { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.order-slot { font-weight: 600; font-size: var(--step--1); }
+.order-items { color: var(--muted); font-size: var(--step--1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.order-total { font-weight: 700; }

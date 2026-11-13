@@ -1,0 +1,24 @@
+@* Square picture of a dish: the admin's photo if there is one, otherwise the emoji on a tinted tile. *@
+<span class="dish-tile tint-@Tint @(Small ? "dish-tile-sm" : null)" aria-hidden="true">
+    @if (!string.IsNullOrEmpty(ImageUrl))
+    {
+        <img src="@ImageUrl" alt="" loading="lazy" decoding="async" width="64" height="64" />
+    }
+    else
+    {
+        <span class="dish-emoji">@Emoji</span>
+    }
+</span>
+
+@code {
+    [Parameter] public string Emoji { get; set; } = "🍽️";
+
+    [Parameter] public string? ImageUrl { get; set; }
+
+    /// <summary>Category id: dishes of one category share a tint.</summary>
+    [Parameter] public Guid TintKey { get; set; }
+
+    [Parameter] public bool Small { get; set; }
+
+    private int Tint => TintKey == Guid.Empty ? 0 : TintKey.ToByteArray()[0] % 4;
+}

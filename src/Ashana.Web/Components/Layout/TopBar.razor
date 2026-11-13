@@ -1,0 +1,43 @@
+<header class="topbar">
+    <div class="topbar-inner">
+        <a href="" class="brand" aria-label="Ashana, back to the menu"><AppLogo /></a>
+
+        <nav class="topnav" aria-label="Main">
+            <NavLink href="" Match="NavLinkMatch.All">Menu</NavLink>
+            @if (User is not null)
+            {
+                <NavLink href="orders">My orders</NavLink>
+            }
+            @if (User?.IsStaff == true)
+            {
+                <NavLink href="kitchen">Kitchen</NavLink>
+            }
+            @if (User?.IsAdmin == true)
+            {
+                <NavLink href="admin">Admin</NavLink>
+            }
+            <NavLink href="help">Help</NavLink>
+        </nav>
+
+        <div class="topbar-actions">
+            <ThemeToggle />
+            @if (User is null)
+            {
+                <a class="btn-link btn-link-solid" href="account/login">Sign in</a>
+            }
+            else
+            {
+                @* The accessible name includes the visible first name (WCAG 2.5.3 "label in name"). *@
+                <a class="account-chip" href="account">
+                    <Avatar Name="@User.Name" Size="32" />
+                    <span class="account-name" aria-hidden="true">@User.FirstName</span>
+                    <span class="visually-hidden">Your account, @User.Name</span>
+                </a>
+            }
+        </div>
+    </div>
+</header>
+
+@code {
+    [CascadingParameter] public CurrentUser? User { get; set; }
+}

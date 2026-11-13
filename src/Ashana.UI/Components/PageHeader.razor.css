@@ -1,0 +1,21 @@
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+.page-header-text { display: grid; gap: 0.35rem; min-width: 0; }
+.page-title:focus { outline: none; }
+.page-subtitle { color: var(--muted); max-width: 62ch; }
+.page-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: fit-content;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.page-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }

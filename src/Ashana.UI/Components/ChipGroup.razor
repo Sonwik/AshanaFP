@@ -1,0 +1,31 @@
+@*
+  A row of toggle chips where one value is selected.
+  The group passes itself to its <Chip> children through a CascadingValue,
+  so a chip knows whether it is selected without the page wiring every chip by hand.
+*@
+@typeparam TValue
+
+<div class="chips @(Wrap ? "chips-wrap" : null) @Class" role="group" aria-label="@AriaLabel">
+    <CascadingValue Value="this" IsFixed="true">
+        @ChildContent
+    </CascadingValue>
+</div>
+
+@code {
+    [Parameter] public TValue? Value { get; set; }
+
+    [Parameter] public EventCallback<TValue?> ValueChanged { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter, EditorRequired] public string AriaLabel { get; set; } = string.Empty;
+
+    /// <summary>Wrap onto several lines instead of scrolling sideways.</summary>
+    [Parameter] public bool Wrap { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    internal bool IsSelected(TValue? value) => EqualityComparer<TValue?>.Default.Equals(value, Value);
+
+    internal Task SelectAsync(TValue? value) => IsSelected(value) ? Task.CompletedTask : ValueChanged.InvokeAsync(value);
+}

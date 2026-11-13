@@ -1,0 +1,79 @@
+@*
+  A kitchen ticket (docket) on the kitchen board. Big number, pickup time, dishes, the student's comment
+  and one large button for the next step, sized for a tablet on the kitchen wall.
+*@
+<article class="docket docket-@Order.Status.ToString().ToLowerInvariant() @(IsLate ? "is-late" : null) @(IsNew ? "is-new" : null)"
+         aria-labelledby="@($"docket-{Order.Id:N}")" data-order="@Order.Number">
+    <header class="docket-head">
+        <span class="docket-number num" id="@($"docket-{Order.Id:N}")" aria-label="@($"Order {Order.Number}")">@Order.Number</span>
+        <span class="docket-time">
+            <span class="docket-slot num">@Order.SlotLabel</span>
+            <span class="docket-when @(IsLate ? "late" : null)">@UiText.Relative(Order.PickupStart, Now)</span>
+        </span>
+    </header>
+
+    <p class="docket-customer">
+        <span>@Order.CustomerName</span>
+        <span class="docket-pay"><Icon Name="@UiText.PaymentIcon(Order.Payment)" Size="15" /> @UiText.Payment(Order.Payment)</span>
+    </p>
+
+    <ul class="docket-lines">
+        @foreach (var line in Order.Lines)
+        {
+            <li>
+                <span class="docket-qty num">@line.Quantity×</span>
+                <span class="docket-dish">@line.Name</span>
+            </li>
+        }
+    </ul>
+
+    @if (!string.IsNullOrEmpty(Order.Comment))
+    {
+        <p class="docket-comment"><Icon Name="message-square-text" Size="16" /> @Order.Comment</p>
+    }
+
+    <footer class="docket-actions">
+        @if (NextAction is not null)
+        {
+            <Button Variant="@(Order.Status == OrderStatus.Ready ? ButtonVariant.Primary : ButtonVariant.Tile)" FullWidth="true"
+                    Icon="@NextIcon" Busy="Busy" OnClick="() => OnAdvance.InvokeAsync(Order)">@NextAction</Button>
+        }
+        @if (Order.Status is OrderStatus.Placed or OrderStatus.Cooking)
+        {
+            <Button Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" Icon="ban" Disabled="Busy"
+                    OnClick="() => OnCancel.InvokeAsync(Order)" aria-label="@($"Cancel order {Order.Number}")">Cancel</Button>
+        }
+    </footer>
+</article>
+
+@code {
+    [Parameter, EditorRequired] public OrderDto Order { get; set; } = default!;
+
+    [Parameter] public DateTimeOffset Now { get; set; }
+
+    [Parameter] public bool Busy { get; set; }
+
+    /// <summary>Highlight for a few seconds after it arrived.</summary>
+    [Parameter] public bool IsNew { get; set; }
+
+    [Parameter] public EventCallback<OrderDto> OnAdvance { get; set; }
+
+    [Parameter] public EventCallback<OrderDto> OnCancel { get; set; }
+
+    private bool IsLate => Order.IsLate(Now);
+
+    private string? NextAction => Order.Status switch
+    {
+        OrderStatus.Placed => "Start cooking",
+        OrderStatus.Cooking => "Mark ready",
+        OrderStatus.Ready => "Hand over",
+        _ => null,
+    };
+
+    private string NextIcon => Order.Status switch
+    {
+        OrderStatus.Placed => "flame",
+        OrderStatus.Cooking => "bell-ring",
+        _ => "hand-platter",
+    };
+}

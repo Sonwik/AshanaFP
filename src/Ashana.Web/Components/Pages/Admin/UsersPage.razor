@@ -1,0 +1,176 @@
+@page "/admin/users"
+@layout AdminLayout
+@attribute [Authorize(Policy = Policies.Admin)]
+@using Ashana.Application.Users
+@inject UserAdminService UserAdmin
+@inject ToastService Toasts
+@inject CanteenClock Clock
+
+<PageTitle>@UiText.Title("Users")</PageTitle>
+
+<PageHeader Title="Users">
+    Give kitchen staff the cook role, or block an account. Open tabs pick up the change within two minutes.
+</PageHeader>
+
+<div class="users-tools">
+    <SearchBox Value="@_search" ValueChanged="v => _search = v" Placeholder="Name or email" Label="Find a user" />
+    <ChipGroup TValue="UserRole?" Value="_role" ValueChanged="v => _role = v" AriaLabel="Filter by role">
+        <Chip TValue="UserRole?" Value="null" Count="_users.Count">All</Chip>
+        <Chip TValue="UserRole?" Value="UserRole.Student" Count="@CountOf(UserRole.Student)">Students</Chip>
+        <Chip TValue="UserRole?" Value="UserRole.Cook" Count="@CountOf(UserRole.Cook)">Cooks</Chip>
+        <Chip TValue="UserRole?" Value="UserRole.Admin" Count="@CountOf(UserRole.Admin)">Admins</Chip>
+    </ChipGroup>
+</div>
+
+<DataTable TItem="UserDto" Items="Visible" RowKey="u => u.Id" PageSize="10" Caption="Users"
+           RowClass="@(u => u.IsActive ? null : "row-hidden")">
+    <EmptyContent>Nobody matches this search.</EmptyContent>
+    <Columns>
+        <DataColumn TItem="UserDto" Title="Person" SortBy="u => u.DisplayName">
+            <span class="person">
+                <Avatar Name="@context.DisplayName" Size="34" />
+                <span class="person-text">
+                    <strong>@context.DisplayName</strong>
+                    <span class="muted">@context.Email</span>
+                </span>
+            </span>
+        </DataColumn>
+        <DataColumn TItem="UserDto" Title="Role" SortBy="u => u.Role">
+            <select class="role-select" value="@context.Role" disabled="@(IsSelf(context) || _busy.Contains(context.Id))"
+                    @onchange="e => ChangeRoleAsync(context, e)" aria-label="@($"Role of {context.DisplayName}")"
+                    title="@(IsSelf(context) ? "You cannot change your own role" : null)">
+                @foreach (var role in Enum.GetValues<UserRole>())
+                {
+                    <option value="@role">@role</option>
+                }
+            </select>
+        </DataColumn>
+        <DataColumn TItem="UserDto" Title="Status" SortBy="u => u.IsActive">
+            @if (context.IsActive)
+            {
+                <Badge Tone="Tone.Success">Active</Badge>
+            }
+            else
+            {
+                <Badge Tone="Tone.Danger">Blocked</Badge>
+            }
+        </DataColumn>
+        <DataColumn TItem="UserDto" Title="Last sign-in" SortBy="u => u.LastLoginAt">
+            <span class="muted">@LastSeen(context)</span>
+        </DataColumn>
+        <DataColumn TItem="UserDto" Title="" AlignEnd="true">
+            @if (IsSelf(context))
+            {
+                <span class="muted">This is you</span>
+            }
+            else
+            {
+                <Button Size="ButtonSize.Small" Variant="@(context.IsActive ? ButtonVariant.Danger : ButtonVariant.Secondary)"
+                        Icon="@(context.IsActive ? "ban" : "badge-check")" Busy="_busy.Contains(context.Id)"
+                        OnClick="() => ToggleActiveAsync(context)">@(context.IsActive ? "Block" : "Unblock")</Button>
+            }
+        </DataColumn>
+    </Columns>
+</DataTable>
+
+<ConfirmDialog @ref="_confirm" />
+
+@code {
+    private readonly HashSet<Guid> _busy = [];
+    private IReadOnlyList<UserDto> _users = [];
+    private string? _search;
+    private UserRole? _role;
+    private ConfirmDialog? _confirm;
+
+    [CascadingParameter] public CurrentUser? User { get; set; }
+
+    private IReadOnlyList<UserDto> Visible => _users
+        .Where(u => _role is null || u.Role == _role)
+        .Where(u => string.IsNullOrWhiteSpace(_search)
+            || u.DisplayName.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || u.Email.Contains(_search, StringComparison.OrdinalIgnoreCase))
+        .ToList();
+
+    protected override async Task OnInitializedAsync() => _users = await UserAdmin.ListAsync();
+
+    private int CountOf(UserRole role) => _users.Count(u => u.Role == role);
+
+    private bool IsSelf(UserDto user) => User?.Id == user.Id;
+
+    private string LastSeen(UserDto user)
+    {
+        if (user.LastLoginAt is not { } last)
+        {
+            return "Never";
+        }
+
+        var local = Clock.ToLocal(last);
+        var days = Clock.Today.DayNumber - DateOnly.FromDateTime(local.DateTime).DayNumber;
+        return days switch
+        {
+            0 => $"Today, {local.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture)}",
+            1 => "Yesterday",
+            < 30 => $"{days} days ago",
+            _ => local.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture),
+        };
+    }
+
+    private async Task ChangeRoleAsync(UserDto user, ChangeEventArgs args)
+    {
+        if (User is null || !Enum.TryParse<UserRole>(args.Value?.ToString(), out var role) || role == user.Role)
+        {
+            return;
+        }
+
+        _busy.Add(user.Id);
+        var result = await UserAdmin.ChangeRoleAsync(User.Id, user.Id, role);
+        _busy.Remove(user.Id);
+
+        if (result.IsFailure)
+        {
+            Toasts.Error(result.Error.Message);
+        }
+        else
+        {
+            Toasts.Success($"{user.DisplayName} is now {(role == UserRole.Admin ? "an admin" : $"a {role.ToString().ToLowerInvariant()}")}.");
+        }
+
+        _users = await UserAdmin.ListAsync();
+    }
+
+    private async Task ToggleActiveAsync(UserDto user)
+    {
+        if (User is null || _confirm is null)
+        {
+            return;
+        }
+
+        if (user.IsActive)
+        {
+            var confirmed = await _confirm.AskAsync(
+                $"Block {user.DisplayName}?",
+                "They will be signed out within two minutes and cannot place orders until you unblock them.",
+                "Block account",
+                danger: true);
+            if (!confirmed)
+            {
+                return;
+            }
+        }
+
+        _busy.Add(user.Id);
+        var result = await UserAdmin.SetActiveAsync(User.Id, user.Id, !user.IsActive);
+        _busy.Remove(user.Id);
+
+        if (result.IsFailure)
+        {
+            Toasts.Error(result.Error.Message);
+        }
+        else
+        {
+            Toasts.Info(result.Value.IsActive ? $"{user.DisplayName} can sign in again." : $"{user.DisplayName} is blocked.");
+        }
+
+        _users = await UserAdmin.ListAsync();
+    }
+}

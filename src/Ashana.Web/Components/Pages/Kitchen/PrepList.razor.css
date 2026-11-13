@@ -1,0 +1,27 @@
+.prep-totals { margin-bottom: 1.25rem; }
+.prep-chips { list-style: none; margin: 0.75rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.prep-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-pill);
+  background: var(--canvas);
+  border: 1px solid var(--line);
+}
+.prep-chips strong { color: var(--tile-strong); }
+
+.prep-slots { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
+.prep-slot {
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--tile);
+}
+.prep-slot.is-late { border-left-color: var(--danger); }
+.prep-slot header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 0.75rem; margin-bottom: 0.5rem; }
+.prep-slot h3 { font-size: var(--step-1); }
+.prep-slot ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.25rem; }
+.prep-slot li { font-weight: 600; }
+.prep-qty { display: inline-block; min-width: 2.2rem; color: var(--tile-strong); font-weight: 800; }

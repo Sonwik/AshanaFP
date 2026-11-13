@@ -1,0 +1,116 @@
+@*
+  Column chart built with plain HTML and CSS (no chart library, no canvas):
+  crisp text at any screen size, and a hidden table for screen readers.
+*@
+<figure class="chart @Class" style="--chart-height: @(Height)px">
+    @if (Title is not null)
+    {
+        <figcaption class="chart-title">@Title</figcaption>
+    }
+    @if (Points.Count == 0 || Points.All(p => p.Value <= 0))
+    {
+        <p class="chart-empty">No data for this period.</p>
+    }
+    else
+    {
+        <div class="chart-body" role="img" aria-label="@Summary">
+            <div class="chart-axis" aria-hidden="true">
+                @foreach (var tick in Ticks)
+                {
+                    <span style="bottom: @Percent(tick)%">@Format(tick)</span>
+                }
+            </div>
+            <div class="chart-plot" aria-hidden="true">
+                @foreach (var tick in Ticks)
+                {
+                    <span class="chart-grid" style="bottom: @Percent(tick)%"></span>
+                }
+                <div class="chart-bars" style="grid-template-columns: repeat(@Points.Count, minmax(0, 1fr))">
+                    @for (var i = 0; i < Points.Count; i++)
+                    {
+                        var point = Points[i];
+                        var isMax = HighlightMax && point.Value == MaxValue;
+                        <div class="chart-col" title="@(point.Tooltip ?? $"{point.Label}: {Format(point.Value)}")">
+                            <span class="chart-bar @(isMax ? "is-max" : null)" style="height: @Percent(point.Value)%"></span>
+                            <span class="chart-label @(ShowLabel(i) ? null : "is-hidden")">@point.Label</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        <table class="visually-hidden">
+            <caption>@(Title ?? "Chart data")</caption>
+            <tbody>
+                @foreach (var point in Points)
+                {
+                    <tr><th scope="row">@point.Label</th><td>@Format(point.Value)</td></tr>
+                }
+            </tbody>
+        </table>
+    }
+</figure>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ChartPoint> Points { get; set; } = [];
+
+    [Parameter] public string? Title { get; set; }
+
+    [Parameter] public int Height { get; set; } = 200;
+
+    /// <summary>Formats axis and tooltip values, for example as money.</summary>
+    [Parameter] public Func<double, string>? ValueFormatter { get; set; }
+
+    /// <summary>Paint the highest bar in saffron.</summary>
+    [Parameter] public bool HighlightMax { get; set; } = true;
+
+    /// <summary>Show every n-th label when there are many bars.</summary>
+    [Parameter] public int MaxLabels { get; set; } = 12;
+
+    [Parameter] public string? Class { get; set; }
+
+    private double MaxValue => Points.Count == 0 ? 0 : Points.Max(p => p.Value);
+
+    private double NiceMax => NiceCeiling(MaxValue);
+
+    private IEnumerable<double> Ticks => [0, NiceMax / 2, NiceMax];
+
+    private string Summary
+    {
+        get
+        {
+            if (Points.Count == 0)
+            {
+                return "Empty chart";
+            }
+
+            var top = Points.MaxBy(p => p.Value)!;
+            return $"{Title ?? "Chart"}: {Points.Count} values, highest {top.Label} with {Format(top.Value)}.";
+        }
+    }
+
+    private string Format(double value) =>
+        ValueFormatter?.Invoke(value) ?? value.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+
+    private string Percent(double value) =>
+        (NiceMax <= 0 ? 0 : Math.Clamp(value / NiceMax * 100, 0, 100)).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    private bool ShowLabel(int index)
+    {
+        var step = Math.Max(1, (int)Math.Ceiling(Points.Count / (double)MaxLabels));
+        return index % step == 0;
+    }
+
+    /// <summary>Rounds up to 1, 2 or 5 × 10ⁿ so axis labels are round numbers.</summary>
+    internal static double NiceCeiling(double value)
+    {
+        if (value <= 0)
+        {
+            return 1;
+        }
+
+        var exponent = Math.Floor(Math.Log10(value));
+        var fraction = value / Math.Pow(10, exponent);
+        var nice = fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10;
+        return nice * Math.Pow(10, exponent);
+    }
+}

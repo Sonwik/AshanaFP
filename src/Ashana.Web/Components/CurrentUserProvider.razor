@@ -1,0 +1,21 @@
+@*
+  Turns the authentication state into a simple CurrentUser record and cascades it to the whole app.
+  Components write [CascadingParameter] public CurrentUser? User instead of parsing claims everywhere.
+  When the user signs out or is blocked (revalidation), the value changes and every consumer re-renders.
+*@
+<CascadingValue Value="_user">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    private CurrentUser? _user;
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _user = AuthenticationState is null ? null : CurrentUser.From((await AuthenticationState).User);
+    }
+}

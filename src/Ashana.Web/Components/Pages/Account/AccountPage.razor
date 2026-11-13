@@ -1,0 +1,59 @@
+@page "/account"
+@attribute [Authorize]
+
+<PageTitle>@UiText.Title("Account")</PageTitle>
+
+@if (User is not null)
+{
+    <div class="account">
+        <section class="panel account-card">
+            <Avatar Name="@User.Name" Size="64" />
+            <div class="account-who">
+                <h1>@User.Name</h1>
+                <p class="muted">@User.Email</p>
+                <Badge Tone="@(User.IsStaff ? Tone.Accent : Tone.Neutral)">@RoleText</Badge>
+            </div>
+        </section>
+
+        <nav class="panel account-links" aria-label="Your pages">
+            <a href="orders"><Icon Name="receipt" /> <span>My orders</span> <Icon Name="chevron-right" Size="18" Class="chev" /></a>
+            @if (User.IsStaff)
+            {
+                <a href="kitchen"><Icon Name="chef-hat" /> <span>Kitchen board</span> <Icon Name="chevron-right" Size="18" Class="chev" /></a>
+                <a href="board" target="_blank" rel="noopener"><Icon Name="tv" /> <span>TV screen for the counter</span> <Icon Name="external-link" Size="18" Class="chev" /></a>
+            }
+            @if (User.IsAdmin)
+            {
+                <a href="admin"><Icon Name="layout-dashboard" /> <span>Administration</span> <Icon Name="chevron-right" Size="18" Class="chev" /></a>
+            }
+            <a href="help"><Icon Name="circle-help" /> <span>Help</span> <Icon Name="chevron-right" Size="18" Class="chev" /></a>
+        </nav>
+
+        <section class="panel account-prefs" aria-labelledby="prefs-title">
+            <h2 id="prefs-title" class="panel-title">On this device</h2>
+            <div class="pref-row">
+                <span>Light or dark theme</span>
+                <ThemeToggle />
+            </div>
+            <p class="muted">Tip: add Ashana to your home screen from the browser menu. It then opens like an app.</p>
+        </section>
+
+        @* A real form POST with an antiforgery token: signing out cannot be triggered by another site. *@
+        <form method="post" action="account/logout" class="account-signout">
+            <AntiforgeryToken />
+            <input type="hidden" name="returnUrl" value="/" />
+            <button type="submit" class="btn-link btn-link-solid"><Icon Name="log-out" Size="18" /> Sign out</button>
+        </form>
+    </div>
+}
+
+@code {
+    [CascadingParameter] public CurrentUser? User { get; set; }
+
+    private string RoleText => User?.Role switch
+    {
+        UserRole.Admin => "Canteen administrator",
+        UserRole.Cook => "Kitchen staff",
+        _ => "Student",
+    };
+}

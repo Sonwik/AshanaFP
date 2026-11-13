@@ -1,0 +1,10 @@
+.load {
+  display: block;
+  height: 0.3rem;
+  border-radius: var(--radius-pill);
+  background: var(--line);
+  overflow: hidden;
+}
+.load-fill { display: block; height: 100%; border-radius: inherit; background: var(--ready); transition: width 300ms var(--ease-out); }
+.load-busy .load-fill { background: var(--saffron); }
+.load-full .load-fill { background: var(--danger); }

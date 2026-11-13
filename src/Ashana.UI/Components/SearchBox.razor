@@ -1,0 +1,81 @@
+@*
+  Search field with debounce: the parent hears about the text only after the user stops typing
+  for DebounceMs. With Blazor Server this saves a server round-trip on every key press.
+*@
+@implements IDisposable
+
+<div class="search @Class">
+    <Icon Name="search" Size="18" Class="search-icon" />
+    <input type="search" class="search-input" value="@_text" @oninput="OnInputAsync"
+           placeholder="@Placeholder" aria-label="@Label" autocomplete="off" enterkeyhint="search" />
+    @if (!string.IsNullOrEmpty(_text))
+    {
+        <button type="button" class="search-clear" @onclick="ClearAsync" aria-label="Clear search">
+            <Icon Name="x" Size="16" />
+        </button>
+    }
+</div>
+
+@code {
+    private string? _text;
+    private CancellationTokenSource? _debounce;
+
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    [Parameter] public string Placeholder { get; set; } = "Search";
+
+    [Parameter] public string Label { get; set; } = "Search";
+
+    [Parameter] public int DebounceMs { get; set; } = 250;
+
+    [Parameter] public string? Class { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (_debounce is null)
+        {
+            _text = Value; // follow the parent unless the user is typing right now
+        }
+    }
+
+    private async Task OnInputAsync(ChangeEventArgs args)
+    {
+        _text = args.Value?.ToString();
+        _debounce?.Cancel();
+        _debounce?.Dispose();
+        var cts = _debounce = new CancellationTokenSource();
+
+        try
+        {
+            await Task.Delay(DebounceMs, cts.Token);
+        }
+        catch (TaskCanceledException)
+        {
+            return; // a newer key press replaced this one
+        }
+
+        if (ReferenceEquals(_debounce, cts))
+        {
+            _debounce = null;
+            cts.Dispose();
+        }
+
+        await ValueChanged.InvokeAsync(_text);
+    }
+
+    private async Task ClearAsync()
+    {
+        _debounce?.Cancel();
+        _debounce = null;
+        _text = null;
+        await ValueChanged.InvokeAsync(null);
+    }
+
+    public void Dispose()
+    {
+        _debounce?.Cancel();
+        _debounce?.Dispose();
+    }
+}

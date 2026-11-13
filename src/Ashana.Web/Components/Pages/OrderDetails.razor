@@ -1,0 +1,216 @@
+@page "/orders/{Id:guid}"
+@attribute [Authorize]
+@implements IDisposable
+@inject OrderService Orders
+@inject IEventSubscriber Events
+@inject AshanaJs Js
+@inject ToastService Toasts
+@inject CanteenClock Clock
+
+<PageTitle>@UiText.Title(_order is null ? "Order" : $"Order {_order.Code}")</PageTitle>
+
+@if (_loading)
+{
+    <div class="page-loading"><Spinner Label="Loading your order" /></div>
+}
+else if (_error is not null || _order is null)
+{
+    <EmptyState Title="Order not found" Icon="receipt" HeadingLevel="1">
+        <ChildContent><p>@(_error ?? "It may belong to another account.")</p></ChildContent>
+        <Actions><a class="btn-link btn-link-solid" href="orders">My orders</a></Actions>
+    </EmptyState>
+}
+else
+{
+    <div class="track">
+        <div class="track-ticket">
+            <TicketStub Number="@_order.Number.ToString(System.Globalization.CultureInfo.InvariantCulture)" Label="Your number"
+                        Tone="@UiText.ToneOf(_order.Status)" Celebrate="_celebrate" AriaLabel="@($"Order number {_order.Number}")">
+                <Caption>
+                    <span class="track-slot">@DayText, @_order.SlotLabel</span>
+                </Caption>
+                <ChildContent>
+                    <div class="track-status">
+                        <OrderStatusBadge Status="_order.Status" />
+                        <p class="track-message" aria-live="polite" data-testid="order-message">@UiText.StudentMessage(_order)</p>
+                    </div>
+                    <StatusSteps Steps="UiText.Steps(_order)" Label="Order progress" />
+                </ChildContent>
+            </TicketStub>
+        </div>
+
+        <div class="track-side">
+            <section class="panel">
+                <h2 class="panel-title">What you ordered</h2>
+                <ul class="track-lines">
+                    @foreach (var line in _order.Lines)
+                    {
+                        <li>
+                            <span aria-hidden="true">@line.Emoji</span>
+                            <span class="track-dish">@line.Quantity × @line.Name</span>
+                            <span class="num">@Money.Tenge(line.LineTotal)</span>
+                        </li>
+                    }
+                </ul>
+                <div class="track-total">
+                    <span>Pay at the counter by <strong>@UiText.Payment(_order.Payment).ToLowerInvariant()</strong></span>
+                    <strong class="num">@Money.Tenge(_order.Total)</strong>
+                </div>
+                @if (!string.IsNullOrEmpty(_order.Comment))
+                {
+                    <p class="track-comment"><Icon Name="message-square-text" Size="16" /> @_order.Comment</p>
+                }
+            </section>
+
+            @if (_order.IsActive && _order.Status != OrderStatus.Ready && IsOwner)
+            {
+                <section class="panel track-notify">
+                    @if (_notify == "granted")
+                    {
+                        <p><Icon Name="bell-ring" Size="18" /> We will notify this device when the order is ready.</p>
+                    }
+                    else if (_notify == "denied")
+                    {
+                        <p class="muted">Notifications are blocked in this browser. Keep this page open: it updates by itself.</p>
+                    }
+                    else if (_notify != "unsupported")
+                    {
+                        <p>This page updates by itself. Want a notification too?</p>
+                        <Button Icon="bell" OnClick="EnableNotificationsAsync">Notify me when it's ready</Button>
+                    }
+                </section>
+            }
+
+            <div class="track-actions">
+                @if (_order.CanCustomerCancel && IsOwner)
+                {
+                    <Button Variant="ButtonVariant.Danger" Icon="x" Busy="_cancelling" OnClick="CancelAsync">Cancel order</Button>
+                }
+                <a class="btn-link" href="orders">All my orders</a>
+            </div>
+        </div>
+    </div>
+}
+
+<ConfirmDialog @ref="_confirm" />
+
+@code {
+    private OrderDto? _order;
+    private string? _error;
+    private bool _loading = true;
+    private bool _celebrate;
+    private bool _cancelling;
+    private string _notify = "default";
+    private IDisposable? _subscription;
+    private ConfirmDialog? _confirm;
+
+    [Parameter] public Guid Id { get; set; }
+
+    [CascadingParameter] public CurrentUser? User { get; set; }
+
+    private bool IsOwner => _order is not null && User?.Id == _order.CustomerId;
+
+    private string DayText =>
+        _order is null ? string.Empty
+        : _order.ServiceDate == Clock.Today ? "Today"
+        : _order.ServiceDate == Clock.Today.AddDays(1) ? "Tomorrow"
+        : _order.ServiceDate.ToString("d MMMM", System.Globalization.CultureInfo.InvariantCulture);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (User is null)
+        {
+            return;
+        }
+
+        _loading = true;
+        var result = await Orders.GetAsync(Id, User.Id, User.IsStaff);
+        _order = result.IsSuccess ? result.Value : null;
+        _error = result.IsSuccess ? null : result.Error.Message;
+        _loading = false;
+
+        if (RendererInfo.IsInteractive)
+        {
+            _subscription?.Dispose();
+            _subscription = Events.Subscribe<OrderChanged>(OnOrderChangedAsync);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && RendererInfo.IsInteractive)
+        {
+            _notify = await Js.NotificationPermissionAsync();
+            StateHasChanged();
+        }
+    }
+
+    private Task OnOrderChangedAsync(OrderChanged change)
+    {
+        if (change.Order.Id != Id)
+        {
+            return Task.CompletedTask;
+        }
+
+        return InvokeAsync(async () =>
+        {
+            var becameReady = _order?.Status != OrderStatus.Ready && change.Order.Status == OrderStatus.Ready;
+            _order = change.Order;
+            _celebrate = becameReady;
+            StateHasChanged();
+
+            if (becameReady && IsOwner)
+            {
+                await Js.ChimeAsync();
+                await Js.VibrateAsync(300);
+                await Js.NotifyAsync($"Order {change.Order.Code} is ready", "Come to the counter and say your number.");
+            }
+            else if (change.Order.Status == OrderStatus.Cancelled && change.Order.CancelledBy == CancelSource.Kitchen)
+            {
+                Toasts.Warning($"The kitchen cancelled order {change.Order.Code}.");
+            }
+        });
+    }
+
+    private async Task EnableNotificationsAsync() => _notify = await Js.RequestNotificationsAsync();
+
+    private async Task CancelAsync()
+    {
+        if (_order is null || User is null || _confirm is null)
+        {
+            return;
+        }
+
+        var confirmed = await _confirm.AskAsync(
+            $"Cancel order {_order.Code}?",
+            "The portions go back to the menu for other students.",
+            "Cancel order",
+            danger: true,
+            cancelText: "Keep order");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        _cancelling = true;
+        var result = await Orders.CancelAsync(_order.Id, User.Id);
+        _cancelling = false;
+
+        if (result.IsSuccess)
+        {
+            _order = result.Value;
+            Toasts.Info($"Order {result.Value.Code} cancelled.");
+        }
+        else
+        {
+            Toasts.Error(result.Error.Message);
+            var fresh = await Orders.GetAsync(_order.Id, User.Id, User.IsStaff);
+            if (fresh.IsSuccess)
+            {
+                _order = fresh.Value;
+            }
+        }
+    }
+
+    public void Dispose() => _subscription?.Dispose();
+}

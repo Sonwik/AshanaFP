@@ -1,0 +1,27 @@
+.rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.9rem; counter-reset: rank; }
+.rank-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.3rem 0.75rem;
+  counter-increment: rank;
+}
+.rank-name { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; min-width: 0; }
+.rank-name::before {
+  content: counter(rank);
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: var(--tile-soft);
+  color: var(--tile-strong);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.rank-emoji { font-size: 1.15rem; }
+.rank-value { font-weight: 700; }
+.rank-track { grid-column: 1 / -1; height: 0.4rem; border-radius: var(--radius-pill); background: var(--canvas); overflow: hidden; }
+.rank-fill { display: block; height: 100%; border-radius: inherit; background: var(--tile); }
+.rank-item:first-child .rank-fill { background: var(--saffron); }
+.rank-hint { grid-column: 1 / -1; font-size: var(--step--1); color: var(--muted); }

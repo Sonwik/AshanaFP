@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Ashana.Domain: the functional core. Immutable records and pure functions only:
+    every "change" returns a new value (or an Error), nothing is modified in place.
+    It references only Ashana.Functional: no ASP.NET Core, no storage, no UI.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ashana.Functional\Ashana.Functional.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ashana.UnitTests" />
+  </ItemGroup>
+
+</Project>

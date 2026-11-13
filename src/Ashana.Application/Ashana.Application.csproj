@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Ashana.Application: the use cases. Pure transitions over the immutable CanteenState (the functional core)
+    and thin services around them (the imperative shell: clock, store, events, logging).
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ashana.Domain\Ashana.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Gives access to Microsoft.Extensions.* abstractions (DI, logging, options, memory cache)
+      that ship with ASP.NET Core. No web types (HttpContext, controllers) are used in this layer.
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ashana.UnitTests" />
+  </ItemGroup>
+
+</Project>

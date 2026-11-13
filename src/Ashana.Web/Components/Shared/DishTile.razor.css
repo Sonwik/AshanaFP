@@ -1,0 +1,18 @@
+.dish-tile {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.dish-tile img { width: 100%; height: 100%; object-fit: cover; }
+.dish-emoji { font-size: 2.1rem; line-height: 1; }
+.dish-tile-sm { width: 2.75rem; height: 2.75rem; border-radius: var(--radius-xs); }
+.dish-tile-sm .dish-emoji { font-size: 1.5rem; }
+
+.tint-0 { background: var(--tile-soft); }
+.tint-1 { background: var(--cooking-soft); }
+.tint-2 { background: var(--placed-soft); }
+.tint-3 { background: var(--ready-soft); }

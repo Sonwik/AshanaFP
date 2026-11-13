@@ -1,0 +1,132 @@
+@page "/orders"
+@attribute [Authorize]
+@implements IDisposable
+@inject OrderService OrderService
+@inject LiveMenu LiveMenu
+@inject CartState Cart
+@inject IEventSubscriber Events
+@inject ToastService Toasts
+@inject NavigationManager Navigation
+@inject CanteenClock Clock
+
+<PageTitle>@UiText.Title("My orders")</PageTitle>
+
+<PageHeader Title="My orders">Active orders update by themselves. Tap one to see your pickup number.</PageHeader>
+
+@if (_orders is null)
+{
+    <Skeleton Lines="4" Height="4rem" />
+}
+else if (_orders.Count == 0)
+{
+    <EmptyState Title="No orders yet" Icon="receipt">
+        <ChildContent><p>Order from the menu and pick it up at your time, without the queue.</p></ChildContent>
+        <Actions><a class="btn-cta" href="">Open the menu</a></Actions>
+    </EmptyState>
+}
+else
+{
+    @if (Active.Count > 0)
+    {
+        <section class="orders-section" aria-labelledby="active-title">
+            <h2 id="active-title" class="orders-title">Active</h2>
+            <div class="orders-list">
+                @foreach (var order in Active)
+                {
+                    <OrderCard @key="order.Id" Order="order" Today="Clock.Today" />
+                }
+            </div>
+        </section>
+    }
+
+    @if (History.Count > 0)
+    {
+        <section class="orders-section" aria-labelledby="history-title">
+            <h2 id="history-title" class="orders-title">History</h2>
+            <div class="orders-list">
+                @foreach (var order in History)
+                {
+                    <div class="history-row" @key="order.Id">
+                        <OrderCard Order="order" Today="Clock.Today" />
+                        <Button Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" Icon="rotate-ccw"
+                                OnClick="() => OrderAgainAsync(order)" aria-label="@($"Order again: {order.Code}")">Order again</Button>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+}
+
+@code {
+    private IReadOnlyList<OrderDto>? _orders;
+    private IDisposable? _subscription;
+
+    [CascadingParameter] public CurrentUser? User { get; set; }
+
+    private IReadOnlyList<OrderDto> Active => _orders?.Where(o => o.IsActive).OrderBy(o => o.PickupStart).ToList() ?? [];
+
+    private IReadOnlyList<OrderDto> History => _orders?.Where(o => !o.IsActive).ToList() ?? [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (User is null)
+        {
+            return;
+        }
+
+        _orders = await OrderService.GetMyOrdersAsync(User.Id);
+        if (RendererInfo.IsInteractive)
+        {
+            var userId = User.Id;
+            _subscription = Events.Subscribe<OrderChanged>(change =>
+            {
+                if (change.Order.CustomerId != userId)
+                {
+                    return Task.CompletedTask;
+                }
+
+                return InvokeAsync(() =>
+                {
+                    var list = _orders?.Where(o => o.Id != change.Order.Id).ToList() ?? [];
+                    list.Add(change.Order);
+                    _orders = list.OrderByDescending(o => o.CreatedAt).ToList();
+                    StateHasChanged();
+                });
+            });
+        }
+    }
+
+    /// <summary>Puts the same dishes into the cart again, with today's prices and stock.</summary>
+    private async Task OrderAgainAsync(OrderDto order)
+    {
+        await LiveMenu.EnsureLoadedAsync(live: true);
+        var added = 0;
+        var skipped = new List<string>();
+        foreach (var line in order.Lines)
+        {
+            var item = LiveMenu.Menu.Find(line.MenuItemId);
+            var result = item is null ? null : await Cart.AddAsync(item, Math.Min(line.Quantity, Math.Max(1, item.RemainingStock)));
+            if (result?.IsSuccess == true)
+            {
+                added++;
+            }
+            else
+            {
+                skipped.Add(line.Name);
+            }
+        }
+
+        if (added == 0)
+        {
+            Toasts.Warning("None of these dishes can be ordered right now.");
+            return;
+        }
+
+        Toasts.Success(skipped.Count == 0
+            ? "Added to your order. Choose a pickup time."
+            : $"Added. Not available now: {string.Join(", ", skipped)}.");
+        Navigation.NavigateTo("checkout");
+    }
+
+    public void Dispose() => _subscription?.Dispose();
+}

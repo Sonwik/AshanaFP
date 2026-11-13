@@ -1,0 +1,15 @@
+@* Kitchen area: nested inside MainLayout, adds the kitchen tabs. *@
+@inherits LayoutComponentBase
+@layout MainLayout
+
+<SectionNav Label="Kitchen" Links="Links" />
+@Body
+
+@code {
+    private static readonly IReadOnlyList<SectionNav.Item> Links =
+    [
+        new("kitchen", "Orders", "chef-hat", Exact: true),
+        new("kitchen/prep", "Prep list", "list-checks"),
+        new("kitchen/stock", "Stop list", "ban"),
+    ];
+}

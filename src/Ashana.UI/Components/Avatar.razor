@@ -1,0 +1,27 @@
+@* Round avatar with initials. The color is picked from the name, so the same person always gets the same color. *@
+<span class="avatar avatar-@ColorIndex @Class" style="--avatar-size: @(Size)px" aria-hidden="true">@Initials</span>
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = string.Empty;
+
+    [Parameter] public int Size { get; set; } = 36;
+
+    [Parameter] public string? Class { get; set; }
+
+    internal string Initials
+    {
+        get
+        {
+            var parts = Name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return parts.Length switch
+            {
+                0 => "?",
+                1 => parts[0][..1].ToUpperInvariant(),
+                _ => string.Concat(parts[0][..1], parts[^1][..1]).ToUpperInvariant(),
+            };
+        }
+    }
+
+    // Stable across runs (string.GetHashCode is randomized per process).
+    private int ColorIndex => Name.Aggregate(0, (hash, ch) => (hash * 31 + ch) % 9973) % 4;
+}

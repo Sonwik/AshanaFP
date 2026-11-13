@@ -1,0 +1,129 @@
+@page "/account/login"
+@attribute [ExcludeFromInteractiveRouting]
+@layout AccountLayout
+@using Ashana.Application.Users
+@using Ashana.Infrastructure.Seeding
+@using Ashana.Web.Endpoints
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.Extensions.Options
+@inject AccountService Accounts
+@inject NavigationManager Navigation
+@inject IOptions<SeedOptions> Seed
+
+@*
+  Static server-rendered page (no Blazor circuit): only a normal HTTP response can set the sign-in cookie.
+  The form posts back to this page; antiforgery validation is automatic for EditForm.
+*@
+
+<PageTitle>@UiText.Title("Sign in")</PageTitle>
+
+@if (CurrentUser.From(HttpContext.User) is { } signedIn)
+{
+    <h1 class="auth-title">You are signed in</h1>
+    <p class="auth-sub">Signed in as <strong>@signedIn.Name</strong>.</p>
+    <a class="btn-cta" href="@HomeFor(signedIn.Role)" data-enhance-nav="false">Continue</a>
+}
+else
+{
+    <h1 class="auth-title">Sign in</h1>
+    <p class="auth-sub">Order ahead and pick up your food without the queue.</p>
+
+    @if (_error is not null)
+    {
+        <p class="form-error" role="alert"><Icon Name="circle-alert" Size="18" /> @_error</p>
+    }
+
+    <EditForm Model="Input" method="post" OnValidSubmit="SignInAsync" FormName="login" class="auth-form" novalidate>
+        <DataAnnotationsValidator />
+        <div class="field">
+            <label for="email">Email</label>
+            <InputText id="email" type="email" @bind-Value="Input.Email" autocomplete="username" inputmode="email" />
+            <ValidationMessage For="() => Input.Email" />
+        </div>
+        <div class="field">
+            <label for="password">Password</label>
+            <InputText id="password" type="password" @bind-Value="Input.Password" autocomplete="current-password" />
+            <ValidationMessage For="() => Input.Password" />
+        </div>
+        <label class="checkbox"><InputCheckbox @bind-Value="Input.RememberMe" /> Keep me signed in on this device</label>
+        <button type="submit" class="btn-cta">Sign in</button>
+    </EditForm>
+
+    <p class="auth-switch">New here? <a href="@RegisterHref" data-enhance-nav="false">Create an account</a></p>
+
+    @if (Seed.Value.DemoData)
+    {
+        <section class="demo" aria-labelledby="demo-title">
+            <h2 id="demo-title" class="demo-title">Try the demo</h2>
+            <p class="muted">One click signs you in. Password for every demo account: <code>@DemoAccounts.Password</code></p>
+            <div class="demo-buttons">
+                @foreach (var account in DemoList)
+                {
+                    <form method="post" @formname="@($"demo-{account.Key}")" @onsubmit="() => DemoSignInAsync(account.Email)">
+                        <AntiforgeryToken />
+                        <button type="submit" class="demo-btn" data-testid="@($"demo-{account.Key}")">
+                            <Icon Name="@account.Icon" Size="18" />
+                            <span><strong>@account.Title</strong><small>@account.Email</small></span>
+                        </button>
+                    </form>
+                }
+            </div>
+        </section>
+    }
+}
+
+@code {
+    private static readonly (string Key, string Title, string Email, string Icon)[] DemoList =
+    [
+        ("student", "Student", DemoAccounts.StudentEmail, "user"),
+        ("cook", "Cook", DemoAccounts.CookEmail, "chef-hat"),
+        ("admin", "Admin", DemoAccounts.AdminEmail, "layout-dashboard"),
+    ];
+
+    private string? _error;
+
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm(FormName = "login")] private LoginInput Input { get; set; } = default!;
+
+    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+
+    // Not an initializer: on a form post the framework sets Input, otherwise we create it here (BL0008).
+    protected override void OnInitialized() => Input ??= new();
+
+    private string RegisterHref => string.IsNullOrEmpty(ReturnUrl)
+        ? "account/register"
+        : $"account/register?returnUrl={Uri.EscapeDataString(ReturnUrl)}";
+
+    private Task SignInAsync() => SignInWithAsync(Input.Email, Input.Password, Input.RememberMe);
+
+    private Task DemoSignInAsync(string email) => SignInWithAsync(email, DemoAccounts.Password, remember: true);
+
+    private async Task SignInWithAsync(string email, string password, bool remember)
+    {
+        var result = await Accounts.AuthenticateAsync(email, password, HttpContext.RequestAborted);
+        if (result.IsFailure)
+        {
+            _error = result.Error.Message;
+            return;
+        }
+
+        var principal = result.Value.ToPrincipal(CookieAuthenticationDefaults.AuthenticationScheme);
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            principal,
+            new AuthenticationProperties { IsPersistent = remember });
+
+        var target = string.IsNullOrEmpty(ReturnUrl) ? HomeFor(result.Value.Role) : AccountEndpoints.SafeReturnUrl(ReturnUrl);
+        Navigation.NavigateTo(target, forceLoad: true);
+    }
+
+    /// <summary>Each role starts where it works: students at the menu, cooks at the board, admins at the dashboard.</summary>
+    private static string HomeFor(UserRole role) => role switch
+    {
+        UserRole.Admin => "/admin",
+        UserRole.Cook => "/kitchen",
+        _ => "/",
+    };
+}

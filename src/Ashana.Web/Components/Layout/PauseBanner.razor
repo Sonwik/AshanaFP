@@ -1,0 +1,23 @@
+@* Shown to everyone the moment the kitchen pauses new orders (pushed in real time). *@
+@implements IDisposable
+@inject CanteenStatus Status
+
+@if (Status.Rules is not null && !Status.AcceptingOrders)
+{
+    <div class="pause-banner" role="status">
+        <Icon Name="pause" Size="18" />
+        <p><strong>New orders are paused.</strong> @(Status.PauseMessage ?? "Please check back in a few minutes.")</p>
+    </div>
+}
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        Status.Changed += OnChanged;
+        await Status.EnsureLoadedAsync(live: RendererInfo.IsInteractive);
+    }
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Status.Changed -= OnChanged;
+}

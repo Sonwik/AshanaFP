@@ -1,0 +1,49 @@
+.docket {
+  --edge: var(--placed);
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.9rem 0.95rem 0.95rem;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-top: 5px solid var(--edge);
+  box-shadow: var(--shadow-1);
+}
+.docket-cooking { --edge: var(--saffron); }
+.docket-ready { --edge: var(--ready); }
+.docket.is-late { border-color: var(--danger); border-top-color: var(--danger); }
+.docket.is-new { animation: docket-in 900ms var(--ease-out); }
+
+.docket-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.docket-number { font-family: var(--font-display); font-size: 2rem; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+.docket-time { display: grid; justify-items: end; line-height: 1.25; }
+.docket-slot { font-weight: 700; }
+.docket-when { font-size: var(--step--1); color: var(--muted); }
+.docket-when.late { color: var(--danger); font-weight: 700; }
+
+.docket-customer { display: flex; justify-content: space-between; gap: 0.5rem; color: var(--muted); font-size: var(--step--1); }
+.docket-pay { display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
+
+.docket-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; }
+.docket-lines li { display: flex; gap: 0.5rem; font-size: 1.05rem; font-weight: 600; }
+.docket-qty { min-width: 2rem; color: var(--tile-strong); font-weight: 800; }
+
+.docket-comment {
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-start;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-xs);
+  background: var(--cooking-soft);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.docket-actions { display: grid; grid-template-columns: 1fr auto; gap: 0.4rem; align-items: center; margin-top: 0.2rem; }
+.docket-actions:has(> :only-child) { grid-template-columns: 1fr; }
+
+@keyframes docket-in {
+  0% { transform: translateY(-6px); box-shadow: 0 0 0 0 color-mix(in srgb, var(--saffron) 70%, transparent); }
+  40% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--saffron) 35%, transparent); }
+  100% { transform: none; box-shadow: var(--shadow-1); }
+}

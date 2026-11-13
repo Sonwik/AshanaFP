@@ -1,0 +1,20 @@
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+  padding: 2.5rem 1.25rem;
+  text-align: center;
+  color: var(--muted);
+}
+.empty-icon {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background: var(--tile-soft);
+  color: var(--tile);
+}
+.empty-title { font-family: var(--font-text); font-size: var(--step-1); font-weight: 650; color: var(--ink); }
+.empty-text { max-width: 40ch; }
+.empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; margin-top: 0.5rem; }

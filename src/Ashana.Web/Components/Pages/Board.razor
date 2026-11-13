@@ -1,0 +1,58 @@
+@page "/board"
+@attribute [ExcludeFromInteractiveRouting]
+@layout BoardLayout
+@inject OrderService Orders
+@inject CanteenClock Clock
+
+@*
+  The TV at the pickup counter. Rendered once on the server (static SSR), then kept live by a few lines of
+  plain JavaScript (js/board.js) listening to the SignalR hub. No Blazor circuit: the screen can stay on all day.
+  Only numbers are shown, never names.
+*@
+
+<PageTitle>Pickup board | Ashana</PageTitle>
+
+<div class="tv" id="board" data-host="@HttpContext.Request.Host.Value">
+    <header class="tv-head">
+        <AppLogo Large="true" />
+        <p class="tv-clock num" data-clock>@Clock.Now.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture)</p>
+    </header>
+    <div class="tv-band" aria-hidden="true"><TileOrnament Height="34" Color="currentColor" /></div>
+
+    <main class="tv-cols">
+        <section class="tv-col tv-preparing" aria-labelledby="tv-preparing">
+            <h2 id="tv-preparing">Preparing</h2>
+            <ol class="tv-list" data-list="preparing" aria-live="polite">
+                @foreach (var entry in _snapshot?.Preparing ?? [])
+                {
+                    <li class="tv-num" data-number="@entry.Number">@entry.Number</li>
+                }
+            </ol>
+        </section>
+        <section class="tv-col tv-ready" aria-labelledby="tv-ready">
+            <h2 id="tv-ready">Ready, come to the counter</h2>
+            <ol class="tv-list" data-list="ready" aria-live="assertive">
+                @foreach (var entry in _snapshot?.Ready ?? [])
+                {
+                    <li class="tv-num" data-number="@entry.Number">@entry.Number</li>
+                }
+            </ol>
+        </section>
+    </main>
+
+    <footer class="tv-foot">
+        <span class="tv-status" data-status="connecting">Connecting…</span>
+        <span>Order ahead at <strong>@HttpContext.Request.Host.Value</strong> and skip the queue</span>
+    </footer>
+</div>
+
+<script src="lib/signalr/signalr.min.js"></script>
+<script src="js/board.js"></script>
+
+@code {
+    private BoardSnapshot? _snapshot;
+
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync() => _snapshot = await Orders.GetBoardAsync();
+}

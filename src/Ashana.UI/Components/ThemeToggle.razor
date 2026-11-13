@@ -1,0 +1,29 @@
+@* Switches between light and dark theme. The choice is remembered in the browser (localStorage). *@
+@inject AshanaJs Js
+
+<button type="button" class="theme-toggle @Class" @onclick="ToggleAsync"
+        aria-label="@(_theme == "dark" ? "Switch to light theme" : "Switch to dark theme")"
+        title="@(_theme == "dark" ? "Light theme" : "Dark theme")">
+    <Icon Name="@(_theme == "dark" ? "sun" : "moon")" Size="20" />
+</button>
+
+@code {
+    private string _theme = "light";
+
+    [Parameter] public string? Class { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _theme = await Js.GetThemeAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleAsync()
+    {
+        _theme = _theme == "dark" ? "light" : "dark";
+        await Js.SetThemeAsync(_theme);
+    }
+}

@@ -1,0 +1,21 @@
+.account { display: grid; gap: 1rem; max-width: 36rem; }
+.account-card { display: flex; align-items: center; gap: 1rem; }
+.account-who { display: grid; gap: 0.25rem; justify-items: start; }
+.account-who h1 { font-size: var(--step-2); }
+.account-links { display: grid; padding: 0.35rem; }
+.account-links a {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 0.75rem;
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.account-links a:hover { background: var(--canvas); color: var(--ink); }
+.account-links ::deep .chev { color: var(--muted); }
+.account-prefs { display: grid; gap: 0.6rem; }
+.pref-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.account-signout { justify-self: start; }

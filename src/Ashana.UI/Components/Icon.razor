@@ -1,0 +1,23 @@
+@* Inline SVG icon. Decorative by default (hidden from screen readers); pass Label when the icon carries meaning on its own. *@
+<svg class="icon @Class" width="@Size" height="@Size" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="@StrokeWidth.ToString(System.Globalization.CultureInfo.InvariantCulture)" stroke-linecap="round" stroke-linejoin="round"
+     aria-hidden="@(Label is null ? "true" : null)" role="@(Label is null ? null : "img")" aria-label="@Label" focusable="false">
+    @((MarkupString)Shape)
+</svg>
+
+@code {
+    /// <summary>Lucide icon name, for example <c>chef-hat</c>.</summary>
+    [Parameter, EditorRequired] public string Name { get; set; } = string.Empty;
+
+    [Parameter] public int Size { get; set; } = 20;
+
+    [Parameter] public double StrokeWidth { get; set; } = 2;
+
+    /// <summary>Accessible name. Leave empty for decorative icons next to text.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    // The markup comes from a fixed, compiled-in dictionary (never from user input), so rendering it raw is safe.
+    private string Shape => IconShapes.All.TryGetValue(Name, out var shape) ? shape : IconShapes.All["circle-help"];
+}

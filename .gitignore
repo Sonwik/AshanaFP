@@ -1,0 +1,32 @@
+# Build output
+bin/
+obj/
+artifacts/
+publish/
+
+# IDE
+.vs/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+.idea/
+*.user
+*.suo
+
+# Runtime data (data file, logs)
+App_Data/
+*.db
+*.db-shm
+*.db-wal
+logs/
+
+# Tests
+TestResults/
+coverage/
+tests/e2e/node_modules/
+tests/e2e/test-results/
+tests/e2e/playwright-report/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,19 @@
+@* Logo: a kese (tea bowl) with a curl of steam, next to the wordmark. Original drawing. *@
+<span class="logo @(Large ? "logo-lg" : null)">
+    <svg class="logo-mark" viewBox="0 0 32 32" width="@(Large ? 40 : 30)" height="@(Large ? 40 : 30)" aria-hidden="true" focusable="false">
+        <rect width="32" height="32" rx="9" fill="#0b7380" />
+        <path d="M6.5 14.5H25.5C25.5 19.8 21.2 24 16 24C10.8 24 6.5 19.8 6.5 14.5Z" fill="#ffffff" />
+        <rect x="12" y="24.6" width="8" height="2.2" rx="1.1" fill="#ffffff" />
+        <path d="M14.6 12.2C12.9 10.4 16.9 9.2 15.4 6.6M18.6 12.2C17.6 11.1 19.6 10.2 18.9 8.8" fill="none" stroke="#f2a516" stroke-width="2" stroke-linecap="round" />
+    </svg>
+    @if (!IconOnly)
+    {
+        <span class="logo-word">Ashana</span>
+    }
+</span>
+
+@code {
+    [Parameter] public bool Large { get; set; }
+
+    [Parameter] public bool IconOnly { get; set; }
+}

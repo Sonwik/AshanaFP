@@ -1,0 +1,30 @@
+<Project>
+  <!--
+    Shared build settings for every project in the solution.
+    Keeping them in one place means all layers compile with the same rules.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+
+    <!-- Code quality: built-in .NET analyzers + code style rules from .editorconfig -->
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- XML doc comments become IntelliSense + API documentation. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <Product>Ashana</Product>
+    <Authors>Abay Zharkyn; Yerassyl Almakhan</Authors>
+    <Description>Ashana FP — canteen pre-ordering system built in a functional style with C#, Blazor and .NET.</Description>
+    <Version>2.0.0</Version>
+  </PropertyGroup>
+
+  <!-- The functional prelude (Result, Option, Unit, F...) is available everywhere without a using line. -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Ashana.UI' and '$(MSBuildProjectName)' != 'Ashana.Functional'">
+    <Using Include="Ashana.Functional" />
+  </ItemGroup>
+</Project>

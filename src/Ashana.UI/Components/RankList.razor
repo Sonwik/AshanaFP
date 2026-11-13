@@ -1,0 +1,38 @@
+@* Ranked list with proportional bars (for example, top dishes). The order is a real ranking, so it is an <ol>. *@
+<ol class="rank @Class" aria-label="@Title">
+    @foreach (var item in Items)
+    {
+        <li class="rank-item">
+            <span class="rank-name">
+                @if (item.Emoji is not null)
+                {
+                    <span class="rank-emoji" aria-hidden="true">@item.Emoji</span>
+                }
+                @item.Label
+            </span>
+            <span class="rank-value num">@(ValueFormatter?.Invoke(item.Value) ?? item.Value.ToString(System.Globalization.CultureInfo.InvariantCulture))</span>
+            <span class="rank-track" aria-hidden="true"><span class="rank-fill" style="width: @Width(item)%"></span></span>
+            @if (item.Tooltip is not null)
+            {
+                <span class="rank-hint">@item.Tooltip</span>
+            }
+        </li>
+    }
+</ol>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ChartPoint> Items { get; set; } = [];
+
+    [Parameter] public string? Title { get; set; }
+
+    [Parameter] public Func<double, string>? ValueFormatter { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private string Width(ChartPoint item)
+    {
+        var max = Items.Count == 0 ? 0 : Items.Max(i => i.Value);
+        var percent = max <= 0 ? 0 : item.Value / max * 100;
+        return percent.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+    }
+}

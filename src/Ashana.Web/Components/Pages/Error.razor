@@ -1,0 +1,31 @@
+﻿@page "/Error"
+@using System.Diagnostics
+
+@* Shown by the exception handler in production. Never shows exception details to the user. *@
+
+<PageTitle>@UiText.Title("Error")</PageTitle>
+
+<EmptyState Title="Something went wrong" Icon="triangle-alert" HeadingLevel="1">
+    <ChildContent>
+        <p>The server could not finish this request. Please try again in a moment.</p>
+        @if (ShowRequestId)
+        {
+            <p class="muted">If you report this, mention code <code>@RequestId</code>.</p>
+        }
+    </ChildContent>
+    <Actions>
+        <a class="btn-cta" href="">Back to the menu</a>
+    </Actions>
+</EmptyState>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

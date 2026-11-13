@@ -1,0 +1,50 @@
+@* Phone navigation at the bottom of the screen, where the thumb reaches. Hidden on wide screens. *@
+<nav class="bottomnav" aria-label="Main">
+    <NavLink href="" Match="NavLinkMatch.All">
+        <Icon Name="utensils-crossed" />
+        <span>Menu</span>
+    </NavLink>
+    @if (User is not null)
+    {
+        <NavLink href="orders">
+            <Icon Name="receipt" />
+            <span>Orders</span>
+        </NavLink>
+    }
+    @if (User?.IsStaff == true)
+    {
+        <NavLink href="kitchen">
+            <Icon Name="chef-hat" />
+            <span>Kitchen</span>
+        </NavLink>
+    }
+    @if (User?.IsAdmin == true)
+    {
+        <NavLink href="admin">
+            <Icon Name="layout-dashboard" />
+            <span>Admin</span>
+        </NavLink>
+    }
+    @if (User is null)
+    {
+        <NavLink href="help">
+            <Icon Name="circle-help" />
+            <span>Help</span>
+        </NavLink>
+        <NavLink href="account/login">
+            <Icon Name="log-in" />
+            <span>Sign in</span>
+        </NavLink>
+    }
+    else
+    {
+        <NavLink href="account">
+            <Icon Name="user" />
+            <span>Account</span>
+        </NavLink>
+    }
+</nav>
+
+@code {
+    [CascadingParameter] public CurrentUser? User { get; set; }
+}

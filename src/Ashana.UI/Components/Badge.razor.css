@@ -1,0 +1,30 @@
+.badge {
+  --badge-fg: var(--done);
+  --badge-bg: var(--done-soft);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.55rem;
+  border-radius: var(--radius-pill);
+  background: var(--badge-bg);
+  color: var(--badge-fg);
+  font-size: var(--step--1);
+  font-weight: 650;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.badge-info { --badge-fg: var(--placed); --badge-bg: var(--placed-soft); }
+.badge-warning { --badge-fg: var(--cooking); --badge-bg: var(--cooking-soft); }
+.badge-success { --badge-fg: var(--ready); --badge-bg: var(--ready-soft); }
+.badge-danger { --badge-fg: var(--danger); --badge-bg: var(--danger-soft); }
+.badge-accent { --badge-fg: var(--tile-strong); --badge-bg: var(--tile-soft); }
+.badge-saffron { --badge-fg: var(--ink); --badge-bg: color-mix(in srgb, var(--saffron) 32%, var(--paper)); }
+
+.badge-strong { --badge-bg: var(--badge-fg); color: var(--paper); }
+
+.badge-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: currentColor;
+}

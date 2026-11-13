@@ -1,0 +1,207 @@
+@page "/admin/settings"
+@layout AdminLayout
+@attribute [Authorize(Policy = Policies.Admin)]
+@using Ashana.Domain.Canteen
+@inject Ashana.Application.Settings.SettingsService SettingsService
+@inject ToastService Toasts
+@inject CanteenClock Clock
+
+<PageTitle>@UiText.Title("Settings")</PageTitle>
+
+<PageHeader Title="Settings">
+    Working hours, pickup slots and limits. Students see the changes immediately.
+</PageHeader>
+
+@if (_form is null)
+{
+    <Skeleton Lines="4" Height="3rem" />
+}
+else
+{
+    <div class="settings">
+        <EditForm Model="_form" OnValidSubmit="SaveAsync" class="panel settings-form">
+            <DataAnnotationsValidator />
+            @if (_error is not null)
+            {
+                <p class="form-error" role="alert"><Icon Name="circle-alert" Size="18" /> @_error</p>
+            }
+
+            <section class="settings-group" aria-labelledby="hours-title">
+                <h2 id="hours-title" class="panel-title">Working hours</h2>
+                <div class="form-grid">
+                    <div class="field">
+                        <label for="opens">Opens at</label>
+                        <InputDate id="opens" Type="InputDateType.Time" @bind-Value="_form.OpensAt" />
+                    </div>
+                    <div class="field">
+                        <label for="closes">Closes at</label>
+                        <InputDate id="closes" Type="InputDateType.Time" @bind-Value="_form.ClosesAt" />
+                        <ValidationMessage For="() => _form.ClosesAt" />
+                    </div>
+                </div>
+            </section>
+
+            <section class="settings-group" aria-labelledby="slots-title">
+                <h2 id="slots-title" class="panel-title">Pickup slots</h2>
+                <div class="form-grid">
+                    <div class="field">
+                        <label for="slot-length">Slot length</label>
+                        <InputSelect id="slot-length" @bind-Value="_form.SlotMinutes">
+                            <option value="10">10 minutes</option>
+                            <option value="15">15 minutes</option>
+                            <option value="20">20 minutes</option>
+                            <option value="30">30 minutes</option>
+                        </InputSelect>
+                        <ValidationMessage For="() => _form.SlotMinutes" />
+                    </div>
+                    <div class="field">
+                        <label for="capacity">Orders per slot</label>
+                        <InputNumber id="capacity" @bind-Value="_form.MaxOrdersPerSlot" min="1" max="500" />
+                        <span class="field-hint">How many orders the counter can hand out in one slot.</span>
+                        <ValidationMessage For="() => _form.MaxOrdersPerSlot" />
+                    </div>
+                    <div class="field">
+                        <label for="lead">Cooking lead time, min</label>
+                        <InputNumber id="lead" @bind-Value="_form.MinLeadMinutes" min="0" max="180" />
+                        <span class="field-hint">A slot can be booked only this long before it starts.</span>
+                        <ValidationMessage For="() => _form.MinLeadMinutes" />
+                    </div>
+                </div>
+            </section>
+
+            <section class="settings-group" aria-labelledby="rules-title">
+                <h2 id="rules-title" class="panel-title">Fair use</h2>
+                <div class="form-grid">
+                    <div class="field">
+                        <label for="noshow">"Not picked up" after, min</label>
+                        <InputNumber id="noshow" @bind-Value="_form.NoShowAfterMinutes" min="5" max="240" />
+                        <span class="field-hint">Counted from the end of the pickup slot.</span>
+                        <ValidationMessage For="() => _form.NoShowAfterMinutes" />
+                    </div>
+                    <div class="field">
+                        <label for="active-limit">Active orders per student</label>
+                        <InputNumber id="active-limit" @bind-Value="_form.MaxActiveOrdersPerUser" min="1" max="10" />
+                        <ValidationMessage For="() => _form.MaxActiveOrdersPerUser" />
+                    </div>
+                </div>
+            </section>
+
+            <section class="settings-group" aria-labelledby="accepting-title">
+                <h2 id="accepting-title" class="panel-title">New orders</h2>
+                <label class="checkbox"><InputCheckbox @bind-Value="_form.AcceptingOrders" /> Accept new orders</label>
+                @if (!_form.AcceptingOrders)
+                {
+                    <div class="field">
+                        <label for="pause-message">Message for students</label>
+                        <InputText id="pause-message" @bind-Value="_form.PauseMessage" maxlength="140" />
+                        <ValidationMessage For="() => _form.PauseMessage" />
+                    </div>
+                }
+            </section>
+
+            <div class="form-actions">
+                <Button Variant="ButtonVariant.Primary" Type="submit" Icon="save" Busy="_saving">Save settings</Button>
+                <Button Variant="ButtonVariant.Ghost" OnClick="LoadAsync">Undo changes</Button>
+            </div>
+        </EditForm>
+
+        <aside class="panel settings-preview" aria-labelledby="preview-title">
+            <h2 id="preview-title" class="panel-title">What this means</h2>
+            @if (PreviewSlots is { } slots)
+            {
+                <ul class="preview-facts">
+                    <li><strong class="num">@slots.Count</strong> pickup slots of @_form.SlotMinutes minutes, from @_form.OpensAt.ToString("HH:mm", Invariant) to @_form.ClosesAt.ToString("HH:mm", Invariant).</li>
+                    <li>Up to <strong class="num">@((slots.Count * _form.MaxOrdersPerSlot).ToString("N0", Invariant))</strong> orders a day.</li>
+                    <li>A student ordering now can pick up at <strong class="num">@EarliestPickup</strong> at the earliest.</li>
+                    <li>Uncollected orders are marked "not picked up" @_form.NoShowAfterMinutes minutes after their slot.</li>
+                </ul>
+                <p class="field-label">First slots</p>
+                <div class="preview-slots">
+                    @foreach (var slot in slots.Take(8))
+                    {
+                        <span class="preview-slot num">@slot.Label</span>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="muted">Fix the highlighted fields to see the preview.</p>
+            }
+        </aside>
+    </div>
+}
+
+@code {
+    private static readonly System.Globalization.CultureInfo Invariant = System.Globalization.CultureInfo.InvariantCulture;
+
+    private SettingsForm? _form;
+    private int _version;
+    private string? _error;
+    private bool _saving;
+
+    /// <summary>Slots generated from the form as it is now. Null while the values are invalid.</summary>
+    private IReadOnlyList<PickupSlot>? PreviewSlots
+    {
+        get
+        {
+            if (_form is null)
+            {
+                return null;
+            }
+
+            // Validate, then lazily generate the slots; null while the values are invalid.
+            return CanteenSettings.Validate(_form.ToRules())
+                .Map(rules => (IReadOnlyList<PickupSlot>)SlotPlanner.GenerateSlots(Clock.Today, rules, Clock.TimeZone).ToList())
+                .GetValueOrDefault(null!);
+        }
+    }
+
+    private string EarliestPickup
+    {
+        get
+        {
+            if (_form is null)
+            {
+                return string.Empty;
+            }
+
+            var rules = _form.ToRules();
+            var earliest = SlotPlanner.EarliestPickup(Clock.Now, rules);
+            var day = SlotPlanner.ServiceDay(Clock.Now, rules);
+            var first = SlotPlanner.GenerateSlots(day, rules, Clock.TimeZone).FirstOrDefault(s => s.Start >= earliest);
+            return first == default ? "tomorrow's first slot" : $"{first.Start.ToString("HH:mm", Invariant)}{(day == Clock.Today ? string.Empty : " tomorrow")}";
+        }
+    }
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var snapshot = await SettingsService.GetForEditAsync();
+        _form = SettingsForm.From(snapshot.Rules);
+        _version = snapshot.Version;
+        _error = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_form is null)
+        {
+            return;
+        }
+
+        _saving = true;
+        var result = await SettingsService.UpdateAsync(_form.ToRules(), _version);
+        _saving = false;
+
+        if (result.IsFailure)
+        {
+            _error = result.Error.Message;
+            return;
+        }
+
+        _version = (await SettingsService.GetForEditAsync()).Version;
+        _error = null;
+        Toasts.Success("Settings saved. Students see the new rules now.");
+    }
+}

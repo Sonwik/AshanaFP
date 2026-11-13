@@ -1,0 +1,256 @@
+@page "/"
+@implements IDisposable
+@inject LiveMenu LiveMenu
+@inject CartState Cart
+@inject SlotService Slots
+@inject IEventSubscriber Events
+@inject ToastService Toasts
+@inject CanteenClock Clock
+
+<PageTitle>@UiText.Title("Menu")</PageTitle>
+
+<div class="menu-layout">
+    <div class="menu-main">
+        <header class="menu-hero">
+            <h1>@Greeting</h1>
+            <p class="menu-sub">@PickupHint</p>
+        </header>
+
+        <div class="menu-tools">
+            <SearchBox Value="@_search" ValueChanged="OnSearchChanged" Placeholder="Search dishes, for example plov" Label="Search the menu" />
+            <ChipGroup TValue="Guid?" Value="_category" ValueChanged="OnCategoryChanged" AriaLabel="Menu categories">
+                <Chip TValue="Guid?" Value="null">All</Chip>
+                @foreach (var category in Menu.Categories)
+                {
+                    <Chip TValue="Guid?" Value="category.Id" Icon="@category.Icon">@category.Name</Chip>
+                }
+            </ChipGroup>
+            <div class="menu-filters">
+                <label class="checkbox"><input type="checkbox" @bind="_vegetarian" @bind:after="ApplyFilters" /> Vegetarian</label>
+                <label class="checkbox"><input type="checkbox" @bind="_availableOnly" @bind:after="ApplyFilters" /> Available now</label>
+                <label class="menu-sort">
+                    <span class="visually-hidden">Sort dishes</span>
+                    <select @bind="_sort" @bind:after="ApplyFilters">
+                        <option value="@MenuSort.Recommended">Recommended</option>
+                        <option value="@MenuSort.PriceLowToHigh">Cheapest first</option>
+                        <option value="@MenuSort.PriceHighToLow">Most expensive first</option>
+                        <option value="@MenuSort.Name">A to Z</option>
+                    </select>
+                </label>
+            </div>
+        </div>
+
+        <div class="visually-hidden" aria-live="polite">@_announcement</div>
+
+        @if (!LiveMenu.IsLoaded)
+        {
+            <div class="menu-skeleton"><Skeleton Lines="6" Height="4rem" /></div>
+        }
+        else if (_visible.Count == 0)
+        {
+            <EmptyState Title="No dishes match your filters" Icon="search">
+                <ChildContent><p>Try another word or clear the filters.</p></ChildContent>
+                <Actions><Button OnClick="ClearFilters">Clear filters</Button></Actions>
+            </EmptyState>
+        }
+        else if (IsGrouped)
+        {
+            @foreach (var category in Menu.Categories)
+            {
+                var items = _visible.Where(i => i.CategoryId == category.Id).ToList();
+                if (items.Count == 0)
+                {
+                    continue;
+                }
+
+                <section class="menu-section" aria-labelledby="@($"cat-{category.Id:N}")">
+                    <h2 class="menu-section-title" id="@($"cat-{category.Id:N}")">
+                        <span aria-hidden="true">@category.Icon</span> @category.Name
+                    </h2>
+                    @foreach (var item in items)
+                    {
+                        <MenuItemRow @key="item.Id" Item="item" Quantity="Cart.QuantityOf(item.Id)"
+                                     QuantityChanged="qty => SetQuantityAsync(item, qty)" OnAdd="AddAsync" />
+                    }
+                </section>
+            }
+        }
+        else
+        {
+            <section class="menu-section" aria-label="Search results">
+                <p class="menu-count muted">@_visible.Count @(_visible.Count == 1 ? "dish" : "dishes")</p>
+                @foreach (var item in _visible)
+                {
+                    <MenuItemRow @key="item.Id" Item="item" Quantity="Cart.QuantityOf(item.Id)"
+                                 QuantityChanged="qty => SetQuantityAsync(item, qty)" OnAdd="AddAsync" />
+                }
+            </section>
+        }
+    </div>
+
+    <aside class="menu-aside" aria-label="Your order">
+        <CartPanel>
+            <Footer>
+                <a class="btn-cta" href="checkout">Choose pickup time</a>
+            </Footer>
+        </CartPanel>
+    </aside>
+</div>
+
+<CartBar />
+
+@code {
+    private readonly List<IDisposable> _subscriptions = [];
+    private readonly Debouncer _slotRefresh = new(TimeSpan.FromMilliseconds(500));
+    private IReadOnlyList<MenuItemDto> _visible = [];
+    private string? _search;
+    private Guid? _category;
+    private bool _vegetarian;
+    private bool _availableOnly;
+    private MenuSort _sort = MenuSort.Recommended;
+    private string? _announcement;
+    private SlotOption? _nextSlot;
+    private bool _paused;
+
+    [CascadingParameter] public CurrentUser? User { get; set; }
+
+    private MenuDto Menu => LiveMenu.Menu;
+
+    private bool IsGrouped => string.IsNullOrWhiteSpace(_search) && _category is null && _sort == MenuSort.Recommended;
+
+    private string Greeting
+    {
+        get
+        {
+            var hour = Clock.Now.Hour;
+            var part = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+            return User is null ? "Order ahead, skip the queue" : $"{part}, {User.FirstName}";
+        }
+    }
+
+    private string PickupHint
+    {
+        get
+        {
+            if (_paused)
+            {
+                return "New orders are paused for a moment. You can still look through the menu.";
+            }
+
+            if (_nextSlot is null)
+            {
+                return "Choose your dishes, then a pickup time. Pay at the counter.";
+            }
+
+            var day = DateOnly.FromDateTime(_nextSlot.Start.DateTime) == Clock.Today ? "today" : "tomorrow";
+            return $"Earliest pickup {day} at {_nextSlot.Start:HH:mm}. Choose dishes, pick a time, pay at the counter.";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var live = RendererInfo.IsInteractive;
+        LiveMenu.Changed += OnMenuChanged;
+        Cart.Changed += OnCartChanged;
+        await LiveMenu.EnsureLoadedAsync(live);
+        await LoadNextSlotAsync();
+        ApplyFilters();
+
+        if (live)
+        {
+            // Slot load changes whenever anyone orders: refresh the "earliest pickup" hint (debounced).
+            _subscriptions.Add(Events.Subscribe<OrderChanged>(_ => RefreshSlotSoon()));
+            _subscriptions.Add(Events.Subscribe<SettingsChanged>(_ => RefreshSlotSoon()));
+        }
+    }
+
+    private Task RefreshSlotSoon()
+    {
+        _slotRefresh.Run(() => InvokeAsync(async () =>
+        {
+            await LoadNextSlotAsync();
+            StateHasChanged();
+        }));
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadNextSlotAsync()
+    {
+        var overview = await Slots.GetOverviewAsync();
+        _paused = !overview.AcceptingOrders;
+        _nextSlot = overview.FirstBookable;
+    }
+
+    private void ApplyFilters() =>
+        _visible = MenuFiltering.Apply(Menu, new MenuFilter(
+            _category,
+            _search,
+            _vegetarian ? MenuTags.Vegetarian : MenuTags.None,
+            _availableOnly,
+            _sort));
+
+    private void OnSearchChanged(string? text)
+    {
+        _search = text;
+        ApplyFilters();
+    }
+
+    private void OnCategoryChanged(Guid? category)
+    {
+        _category = category;
+        ApplyFilters();
+    }
+
+    private void ClearFilters()
+    {
+        _search = null;
+        _category = null;
+        _vegetarian = false;
+        _availableOnly = false;
+        _sort = MenuSort.Recommended;
+        ApplyFilters();
+    }
+
+    private async Task AddAsync(MenuItemDto item)
+    {
+        var result = await Cart.AddAsync(item);
+        if (result.IsFailure)
+        {
+            Toasts.Warning(result.Error.Message);
+            return;
+        }
+
+        _announcement = $"{item.Name} added to your order. {UiText.Portions(Cart.Count)} in total.";
+    }
+
+    private async Task SetQuantityAsync(MenuItemDto item, int quantity)
+    {
+        var result = await Cart.SetQuantityAsync(item.Id, quantity, item.RemainingStock);
+        if (result.IsFailure)
+        {
+            Toasts.Warning(result.Error.Message);
+            return;
+        }
+
+        _announcement = quantity == 0 ? $"{item.Name} removed." : $"{item.Name}: {quantity}.";
+    }
+
+    private void OnMenuChanged() => _ = InvokeAsync(() =>
+    {
+        ApplyFilters();
+        StateHasChanged();
+    });
+
+    private void OnCartChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        LiveMenu.Changed -= OnMenuChanged;
+        Cart.Changed -= OnCartChanged;
+        _slotRefresh.Dispose();
+        foreach (var subscription in _subscriptions)
+        {
+            subscription.Dispose();
+        }
+    }
+}

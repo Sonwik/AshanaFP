@@ -1,0 +1,22 @@
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+}
+.step {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--tile);
+  cursor: pointer;
+}
+.step:hover:not(:disabled) { background: var(--tile-soft); }
+.step:disabled { color: var(--line-strong); cursor: not-allowed; }
+.value { min-width: 1.75rem; text-align: center; font-weight: 700; }
+.stepper-sm .step { width: 2.25rem; height: 2.25rem; }

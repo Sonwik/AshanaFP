@@ -1,0 +1,65 @@
+.how {
+  list-style: none;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+  counter-reset: how;
+}
+.how-step {
+  position: relative;
+  display: grid;
+  gap: 0.4rem;
+  padding: 1.1rem 1.2rem 1.2rem;
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  counter-increment: how;
+}
+.how-step::after {
+  content: counter(how);
+  position: absolute;
+  top: 0.6rem;
+  right: 1rem;
+  font-family: var(--font-display);
+  font-size: var(--step-4);
+  font-weight: 700;
+  color: var(--tile-soft);
+  line-height: 1;
+}
+.how-step h2 { font-size: var(--step-1); }
+.how-step p { color: var(--muted); }
+.how-icon {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--radius-sm);
+  background: var(--tile);
+  color: var(--on-tile);
+}
+
+.help-grid { display: grid; gap: 1rem; }
+details { padding: 0.65rem 0; border-bottom: 1px solid var(--line); }
+details:last-of-type { border-bottom: 0; }
+summary { cursor: pointer; font-weight: 650; }
+details p { margin-top: 0.4rem; color: var(--muted); }
+.help-list { margin: 0.6rem 0 0; padding-left: 1.1rem; display: grid; gap: 0.45rem; }
+.help-sub { margin-top: 1.25rem; }
+.help-access { margin-top: 1rem; }
+.help-access p { margin-top: 0.4rem; color: var(--muted); }
+kbd {
+  padding: 0.05rem 0.4rem;
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--canvas);
+  font-family: inherit;
+  font-size: 0.85em;
+  color: var(--ink);
+}
+
+@media (min-width: 800px) {
+  .how { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .help-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}

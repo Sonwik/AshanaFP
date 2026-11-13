@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!--
+    Ashana.UI: reusable Blazor components (design system).
+    It does not know anything about orders or menus, so it could be reused
+    in another app, for example a .NET MAUI Blazor Hybrid mobile client.
+  -->
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ashana.ComponentTests" />
+  </ItemGroup>
+
+</Project>

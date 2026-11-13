@@ -1,0 +1,19 @@
+.track { display: grid; gap: 1.5rem; }
+.track-ticket { padding-top: 0.5rem; }
+.track-slot { font-size: 1.05rem; }
+.track-status { display: grid; justify-items: center; gap: 0.5rem; text-align: center; margin-bottom: 1.1rem; }
+.track-message { max-width: 30ch; }
+.track-side { display: grid; gap: 1rem; align-content: start; }
+.track-lines { list-style: none; margin: 0.75rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
+.track-lines li { display: grid; grid-template-columns: auto 1fr auto; gap: 0.6rem; align-items: baseline; }
+.track-dish { font-weight: 600; }
+.track-total { display: flex; justify-content: space-between; gap: 1rem; margin-top: 0.9rem; padding-top: 0.75rem; border-top: 1px dashed var(--line-strong); color: var(--muted); }
+.track-total strong.num { color: var(--ink); font-size: 1.1rem; }
+.track-comment { display: flex; gap: 0.4rem; margin-top: 0.75rem; padding: 0.5rem 0.65rem; border-radius: var(--radius-xs); background: var(--canvas); }
+.track-notify { display: grid; gap: 0.6rem; justify-items: start; }
+.track-notify p { display: flex; gap: 0.4rem; align-items: center; }
+.track-actions { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; }
+
+@media (min-width: 900px) {
+  .track { grid-template-columns: minmax(20rem, 26rem) minmax(0, 1fr); align-items: start; gap: 2.5rem; }
+}

@@ -1,0 +1,15 @@
+.stat {
+  display: grid;
+  align-content: start; /* tiles in one row share a height; keep label and value at the top */
+  gap: 0.25rem;
+  padding: 1rem 1.1rem;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+.stat-label { display: flex; align-items: center; gap: 0.4rem; color: var(--muted); font-size: var(--step--1); font-weight: 600; }
+.stat-value { font-family: var(--font-display); font-size: var(--step-2); font-weight: 600; line-height: 1.1; }
+.stat-hint { font-size: var(--step--1); color: var(--muted); }
+.stat-hint-success { color: var(--ready); }
+.stat-hint-danger { color: var(--danger); }
+.stat-hint-warning { color: var(--cooking); }

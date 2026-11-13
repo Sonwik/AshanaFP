@@ -1,0 +1,118 @@
+@*
+  Modal dialog on top of the native <dialog> element: focus is trapped inside, Esc closes it,
+  and focus returns to the button that opened it. Two-way bindable: <Modal @bind-Open="editing">.
+*@
+@implements IAsyncDisposable
+@inject AshanaJs Js
+
+<dialog @ref="_dialog" class="modal modal-@Size.ToString().ToLowerInvariant() @Class" aria-labelledby="@_titleId">
+    @if (_rendered)
+    {
+        <div class="modal-surface">
+            <header class="modal-header">
+                <h2 id="@_titleId" class="modal-title">@Title</h2>
+                <button type="button" class="modal-close" @onclick="CloseAsync" aria-label="Close">
+                    <Icon Name="x" Size="20" />
+                </button>
+            </header>
+            <div class="modal-body">
+                @ChildContent
+            </div>
+            @if (Footer is not null)
+            {
+                <footer class="modal-footer">@Footer</footer>
+            }
+        </div>
+    }
+</dialog>
+
+@code {
+    private readonly string _titleId = "dlg-" + Guid.NewGuid().ToString("N")[..8];
+    private ElementReference _dialog;
+    private DotNetObjectReference<Modal>? _self;
+    private bool _shown;
+    private bool _rendered;
+    private int _session;
+    private int _closedSession = -1;
+
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public RenderFragment? Footer { get; set; }
+
+    [Parameter] public ModalSize Size { get; set; } = ModalSize.Medium;
+
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Raised once after the dialog closed (by the X, Esc, the backdrop or the parent).</summary>
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        // Content is rendered only while open, so a closed dialog keeps no stale form in the page.
+        if (Open)
+        {
+            _rendered = true;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Open && !_shown)
+        {
+            _shown = true;
+            _session++;
+            _self ??= DotNetObjectReference.Create(this);
+            await Js.ShowDialogAsync(_dialog, _self);
+        }
+        else if (!Open && _shown)
+        {
+            // The parent closed it (for example after saving).
+            _shown = false;
+            _closedSession = _session;
+            await Js.CloseDialogAsync(_dialog);
+            _rendered = false;
+            await OnClosed.InvokeAsync();
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>Closes the dialog from code inside it (the X button).</summary>
+    public async Task CloseAsync()
+    {
+        await Js.CloseDialogAsync(_dialog);
+        await NotifyClosed();
+    }
+
+    /// <summary>Called from JavaScript when the browser closed the dialog (Esc or a click on the backdrop).</summary>
+    [JSInvokable]
+    public async Task NotifyClosed()
+    {
+        if (_closedSession == _session)
+        {
+            return; // already handled for this opening
+        }
+
+        _closedSession = _session;
+        _shown = false;
+        _rendered = false;
+        await OpenChanged.InvokeAsync(false);
+        await OnClosed.InvokeAsync();
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_shown)
+        {
+            await Js.CloseDialogAsync(_dialog);
+        }
+
+        _self?.Dispose();
+    }
+}

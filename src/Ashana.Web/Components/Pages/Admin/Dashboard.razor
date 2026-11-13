@@ -1,0 +1,111 @@
+@page "/admin"
+@layout AdminLayout
+@attribute [Authorize(Policy = Policies.Admin)]
+@inject Ashana.Application.Analytics.AnalyticsService Analytics
+@inject CanteenClock Clock
+
+<PageTitle>@UiText.Title("Dashboard")</PageTitle>
+
+<PageHeader Title="Dashboard">
+    <ChildContent>Revenue counts picked-up orders only, because students pay at the counter.</ChildContent>
+    <Actions>
+        <SegmentedControl TValue="int" Legend="Period" HideLegend="true" Options="Periods" Value="_days" ValueChanged="ChangePeriodAsync" />
+        <a class="btn-link btn-link-solid" href="@CsvHref" download><Icon Name="download" Size="18" /> Export CSV</a>
+    </Actions>
+</PageHeader>
+
+@if (Data is null)
+{
+    <Skeleton Lines="3" Height="6rem" />
+}
+else
+{
+    <p class="dash-range muted">@Data.From.ToString("d MMM", Invariant) to @Data.To.ToString("d MMM yyyy", Invariant)</p>
+
+    <div class="stats">
+        <StatTile Label="Revenue" Icon="banknote" Value="@Money.Tenge(Data.Revenue)" Hint="@($"{Data.PickedUp} picked-up orders")" />
+        <StatTile Label="Orders" Icon="receipt" Value="@Data.Orders.ToString("N0", Invariant)" Hint="@($"{Data.Orders / Math.Max(1, _days)} per day on average")" />
+        <StatTile Label="Average order" Icon="shopping-bag" Value="@Money.Tenge(Data.AverageOrderValue)" Hint="Per picked-up order" />
+        <StatTile Label="Kitchen time" Icon="timer" Value="@PrepTime" Hint="Start of cooking to ready" />
+        <StatTile Label="Cancelled" Icon="ban" Value="@Percent(Data.CancellationRate)" Hint="@($"{Data.Cancelled} orders")"
+                  HintTone="@(Data.CancellationRate > 0.1 ? Tone.Danger : Tone.Neutral)" />
+        <StatTile Label="Not picked up" Icon="package-check" Value="@Percent(Data.NoShowRate)" Hint="@($"{Data.WastedPortions} portions wasted")"
+                  HintTone="@(Data.WastedPortions > 0 ? Tone.Warning : Tone.Success)" />
+    </div>
+
+    <div class="dash-grid">
+        <section class="panel">
+            <BarChart Title="Orders per day" Points="DailyPoints" Height="190" ValueFormatter="FormatCount" />
+        </section>
+        <section class="panel">
+            <BarChart Title="Busy pickup times" Points="PeakPoints" Height="190" MaxLabels="9" ValueFormatter="FormatCount" />
+            @if (Data.BusiestSlot is { } busiest)
+            {
+                <p class="dash-insight">The busiest slot is <strong>@busiest.Label</strong>. More capacity or a second counter around this time shortens the wait most.</p>
+            }
+        </section>
+        <section class="panel">
+            <h2 class="panel-title">Top dishes</h2>
+            <RankList Title="Top dishes" Items="TopPoints" ValueFormatter="FormatPortions" />
+        </section>
+    </div>
+}
+
+@code {
+    private static readonly System.Globalization.CultureInfo Invariant = System.Globalization.CultureInfo.InvariantCulture;
+
+    private static readonly IReadOnlyList<SegmentOption<int>> Periods =
+    [
+        new(7, "7 days"),
+        new(14, "14 days"),
+        new(30, "30 days"),
+    ];
+
+    private int _days = 7;
+
+    /// <summary>
+    /// .NET 10 declarative persistent state: the data computed during prerendering is sent to the browser
+    /// with the page, so the interactive render does not query the store a second time.
+    /// </summary>
+    [PersistentState]
+    public Ashana.Application.Analytics.Dashboard? Data { get; set; }
+
+    private string CsvHref => $"api/admin/orders.csv?from={Clock.Today.AddDays(-(_days - 1)):yyyy-MM-dd}&to={Clock.Today:yyyy-MM-dd}";
+
+    private string PrepTime => Data?.AveragePrepTime is { } t ? $"{t.TotalMinutes:0.0} min" : "No data";
+
+    private IReadOnlyList<ChartPoint> DailyPoints => Data?.Daily
+        .Select(d => new ChartPoint(d.Date.ToString("d MMM", Invariant), d.Orders, $"{d.Date.ToString("ddd d MMM", Invariant)}: {d.Orders} orders, {Money.Tenge(d.Revenue)}"))
+        .ToList() ?? [];
+
+    private IReadOnlyList<ChartPoint> PeakPoints => Data?.PeakTimes
+        .Select(p => new ChartPoint(p.Label, p.Orders, $"{p.Label}: {p.Orders} orders"))
+        .ToList() ?? [];
+
+    private IReadOnlyList<ChartPoint> TopPoints => Data?.TopDishes
+        .Select(d => new ChartPoint(d.Name, d.Portions, Money.Tenge(d.Revenue), d.Emoji))
+        .ToList() ?? [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        Data ??= await LoadAsync();
+    }
+
+    private async Task ChangePeriodAsync(int days)
+    {
+        _days = days;
+        Data = await LoadAsync();
+    }
+
+    private Task<Ashana.Application.Analytics.Dashboard> LoadAsync()
+    {
+        var to = Clock.Today;
+        return Analytics.GetDashboardAsync(to.AddDays(-(_days - 1)), to);
+    }
+
+    private static string FormatCount(double value) => value.ToString("0", Invariant);
+
+    private static string FormatPortions(double value) => $"{value.ToString("0", Invariant)} portions";
+
+    private static string Percent(double value) => value.ToString("0.#%", Invariant);
+}

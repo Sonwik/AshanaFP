@@ -1,0 +1,368 @@
+@page "/admin/menu"
+@layout AdminLayout
+@attribute [Authorize(Policy = Policies.Admin)]
+@inject MenuService MenuService
+@inject ToastService Toasts
+
+<PageTitle>@UiText.Title("Menu")</PageTitle>
+
+<PageHeader Title="Menu">
+    <ChildContent>Dishes, prices and daily portions. Changes reach every open menu immediately.</ChildContent>
+    <Actions>
+        <Button Icon="tag" OnClick="OpenNewCategory">New category</Button>
+        <Button Variant="ButtonVariant.Primary" Icon="plus" OnClick="OpenNew">New dish</Button>
+    </Actions>
+</PageHeader>
+
+<div class="editor-tools">
+    <SearchBox Value="@_search" ValueChanged="v => _search = v" Placeholder="Find a dish" Label="Find a dish" />
+    <ChipGroup TValue="Guid?" Value="_category" ValueChanged="v => _category = v" AriaLabel="Filter by category">
+        <Chip TValue="Guid?" Value="null" Count="@_items.Count(i => !i.IsArchived)">All</Chip>
+        @foreach (var category in _categories)
+        {
+            <Chip TValue="Guid?" Value="category.Id" Icon="@category.Icon" Count="@CountIn(category.Id)">@category.Name</Chip>
+        }
+    </ChipGroup>
+    <label class="checkbox"><input type="checkbox" @bind="_showArchived" /> Show archived dishes</label>
+</div>
+
+@if (!_loaded)
+{
+    <Skeleton Lines="5" Height="3.5rem" />
+}
+else
+{
+    <DataTable TItem="MenuItemDto" Items="Visible" RowKey="i => i.Id" PageSize="12" Caption="Dishes"
+               RowClass="@(i => i.IsArchived ? "row-hidden" : null)">
+        <EmptyContent>No dishes match. Try another word or category.</EmptyContent>
+        <Columns>
+            <DataColumn TItem="MenuItemDto" Title="Dish" SortBy="i => i.Name">
+                <span class="admin-dish">
+                    <DishTile Emoji="@context.Emoji" ImageUrl="@context.ImageUrl" TintKey="context.CategoryId" Small="true" />
+                    <span class="admin-dish-text">
+                        <strong>@context.Name</strong>
+                        <span class="admin-desc">@context.Description</span>
+                    </span>
+                </span>
+            </DataColumn>
+            <DataColumn TItem="MenuItemDto" Title="Category" SortBy="i => CategoryName(i.CategoryId)">@CategoryName(context.CategoryId)</DataColumn>
+            <DataColumn TItem="MenuItemDto" Title="Price" SortBy="i => i.Price" AlignEnd="true"><span class="num">@Money.Tenge(context.Price)</span></DataColumn>
+            <DataColumn TItem="MenuItemDto" Title="Portions a day" SortBy="i => i.DailyStock" AlignEnd="true"><span class="num">@context.DailyStock</span></DataColumn>
+            <DataColumn TItem="MenuItemDto" Title="Status">
+                @if (context.IsArchived)
+                {
+                    <Badge>Archived</Badge>
+                }
+                else if (!context.IsAvailable)
+                {
+                    <Badge Tone="Tone.Warning">Hidden</Badge>
+                }
+                else
+                {
+                    <Badge Tone="Tone.Success">On the menu</Badge>
+                }
+            </DataColumn>
+            <DataColumn TItem="MenuItemDto" Title="" AlignEnd="true">
+                <span class="row-actions">
+                    <Button Size="ButtonSize.Small" Variant="ButtonVariant.Ghost" Icon="pencil" OnClick="() => OpenEdit(context)" aria-label="@($"Edit {context.Name}")">Edit</Button>
+                    @if (!context.IsArchived)
+                    {
+                        <Button Size="ButtonSize.Small" Variant="ButtonVariant.Ghost" Icon="archive" OnClick="() => ArchiveAsync(context)"
+                                aria-label="@($"Archive {context.Name}")" title="Archive" />
+                    }
+                </span>
+            </DataColumn>
+        </Columns>
+    </DataTable>
+}
+
+<Modal @bind-Open="_editing" Title="@(_editId is null ? "New dish" : "Edit dish")" Size="ModalSize.Large">
+    <ChildContent>
+        <div class="editor">
+            <EditForm id="dish-form" Model="_form" OnValidSubmit="SaveAsync">
+                <DataAnnotationsValidator />
+                @if (_formError is not null)
+                {
+                    <div class="form-error" role="alert">
+                        <Icon Name="circle-alert" Size="18" />
+                        <span>@_formError</span>
+                        @if (_conflict)
+                        {
+                            <button type="button" class="link-button" @onclick="ReloadEditedAsync">Load the latest version</button>
+                        }
+                    </div>
+                }
+                <div class="form-grid">
+                    <div class="field span-2">
+                        <label for="dish-name">Name</label>
+                        <InputText id="dish-name" @bind-Value="_form.Name" maxlength="60" />
+                        <ValidationMessage For="() => _form.Name" />
+                    </div>
+                    <div class="field">
+                        <label for="dish-category">Category</label>
+                        <InputSelect id="dish-category" @bind-Value="_form.CategoryId">
+                            <option value="@Guid.Empty">Choose a category</option>
+                            @foreach (var category in _categories)
+                            {
+                                <option value="@category.Id">@category.Icon @category.Name</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="() => _form.CategoryId" />
+                    </div>
+                    <div class="field">
+                        <label for="dish-emoji">Emoji</label>
+                        <InputText id="dish-emoji" @bind-Value="_form.Emoji" maxlength="8" />
+                        <span class="field-hint">Shown when there is no photo.</span>
+                    </div>
+                    <div class="field">
+                        <label for="dish-price">Price, ₸</label>
+                        <InputNumber id="dish-price" @bind-Value="_form.Price" min="1" step="50" />
+                        <ValidationMessage For="() => _form.Price" />
+                    </div>
+                    <div class="field">
+                        <label for="dish-stock">Portions a day</label>
+                        <InputNumber id="dish-stock" @bind-Value="_form.DailyStock" min="0" />
+                        <ValidationMessage For="() => _form.DailyStock" />
+                    </div>
+                    <div class="field">
+                        <label for="dish-prep">Cooking time, min</label>
+                        <InputNumber id="dish-prep" @bind-Value="_form.PrepMinutes" min="1" />
+                        <ValidationMessage For="() => _form.PrepMinutes" />
+                    </div>
+                    <div class="field">
+                        <label for="dish-kcal">Calories (optional)</label>
+                        <InputNumber id="dish-kcal" @bind-Value="_form.Calories" min="0" />
+                        <ValidationMessage For="() => _form.Calories" />
+                    </div>
+                    <div class="field span-2">
+                        <label for="dish-desc">Description</label>
+                        <InputTextArea id="dish-desc" @bind-Value="_form.Description" maxlength="300" rows="3" />
+                        <ValidationMessage For="() => _form.Description" />
+                    </div>
+                    <div class="field span-2">
+                        <label for="dish-image">Photo link (optional)</label>
+                        <InputText id="dish-image" type="url" @bind-Value="_form.ImageUrl" placeholder="https://" />
+                        <ValidationMessage For="() => _form.ImageUrl" />
+                    </div>
+                    <fieldset class="tags-field span-2">
+                        <legend class="field-label">Labels</legend>
+                        <label class="checkbox"><InputCheckbox @bind-Value="_form.Vegetarian" /> Vegetarian</label>
+                        <label class="checkbox"><InputCheckbox @bind-Value="_form.Halal" /> Halal</label>
+                        <label class="checkbox"><InputCheckbox @bind-Value="_form.Spicy" /> Spicy</label>
+                        <label class="checkbox"><InputCheckbox @bind-Value="_form.GlutenFree" /> Gluten-free</label>
+                        <label class="checkbox"><InputCheckbox @bind-Value="_form.IsNew" /> New</label>
+                    </fieldset>
+                </div>
+            </EditForm>
+
+            <aside class="editor-preview" aria-label="Preview">
+                <p class="field-label">How students will see it</p>
+                <MenuItemRow Item="Preview" />
+            </aside>
+        </div>
+    </ChildContent>
+    <Footer>
+        <Button Variant="ButtonVariant.Ghost" OnClick="() => _editing = false">Cancel</Button>
+        <Button Variant="ButtonVariant.Primary" Type="submit" Busy="_saving" form="dish-form">Save dish</Button>
+    </Footer>
+</Modal>
+
+<Modal @bind-Open="_addingCategory" Title="New category" Size="ModalSize.Small">
+    <ChildContent>
+        <EditForm id="category-form" Model="_categoryForm" OnValidSubmit="SaveCategoryAsync">
+            <DataAnnotationsValidator />
+            @if (_categoryError is not null)
+            {
+                <p class="form-error" role="alert"><Icon Name="circle-alert" Size="18" /> @_categoryError</p>
+            }
+            <div class="form-grid">
+                <div class="field span-2">
+                    <label for="category-name">Name</label>
+                    <InputText id="category-name" @bind-Value="_categoryForm.Name" maxlength="30" />
+                    <ValidationMessage For="() => _categoryForm.Name" />
+                </div>
+                <div class="field">
+                    <label for="category-icon">Emoji</label>
+                    <InputText id="category-icon" @bind-Value="_categoryForm.Icon" maxlength="8" />
+                </div>
+            </div>
+        </EditForm>
+    </ChildContent>
+    <Footer>
+        <Button Variant="ButtonVariant.Ghost" OnClick="() => _addingCategory = false">Cancel</Button>
+        <Button Variant="ButtonVariant.Primary" Type="submit" Busy="_saving" form="category-form">Add category</Button>
+    </Footer>
+</Modal>
+
+<ConfirmDialog @ref="_confirm" />
+
+@code {
+    private static readonly Guid PreviewId = Guid.NewGuid();
+
+    private IReadOnlyList<MenuItemDto> _items = [];
+    private IReadOnlyList<CategoryDto> _categories = [];
+    private bool _loaded;
+    private string? _search;
+    private Guid? _category;
+    private bool _showArchived;
+
+    private bool _editing;
+    private Guid? _editId;
+    private int _editVersion;
+    private MenuItemForm _form = new();
+    private string? _formError;
+    private bool _conflict;
+    private bool _saving;
+
+    private bool _addingCategory;
+    private CategoryForm _categoryForm = new();
+    private string? _categoryError;
+
+    private ConfirmDialog? _confirm;
+
+    private IReadOnlyList<MenuItemDto> Visible => _items
+        .Where(i => _showArchived || !i.IsArchived)
+        .Where(i => _category is null || i.CategoryId == _category)
+        .Where(i => string.IsNullOrWhiteSpace(_search) || i.Name.Contains(_search, StringComparison.OrdinalIgnoreCase))
+        .OrderBy(i => i.IsArchived)
+        .ThenBy(i => CategoryOrder(i.CategoryId))
+        .ThenBy(i => i.Name, StringComparer.CurrentCulture)
+        .ToList();
+
+    private MenuItemDto Preview => _form.ToPreview(PreviewId, _form.DailyStock);
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _categories = await MenuService.GetCategoriesAsync();
+        _items = await MenuService.GetAllForAdminAsync();
+        _loaded = true;
+    }
+
+    private int CountIn(Guid categoryId) => _items.Count(i => i.CategoryId == categoryId && !i.IsArchived);
+
+    private string CategoryName(Guid id) => _categories.FirstOrDefault(c => c.Id == id)?.Name ?? "Unknown";
+
+    private int CategoryOrder(Guid id) => _categories.FirstOrDefault(c => c.Id == id)?.SortOrder ?? int.MaxValue;
+
+    private void OpenNew()
+    {
+        _editId = null;
+        _editVersion = 0;
+        _form = new MenuItemForm { CategoryId = _category ?? Guid.Empty };
+        _formError = null;
+        _conflict = false;
+        _editing = true;
+    }
+
+    private void OpenEdit(MenuItemDto item)
+    {
+        _editId = item.Id;
+        _editVersion = item.Version;
+        _form = MenuItemForm.From(item);
+        _formError = null;
+        _conflict = false;
+        _editing = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        _formError = null;
+        _conflict = false;
+        try
+        {
+            var result = _editId is { } id
+                ? await MenuService.UpdateAsync(id, _editVersion, _form.ToDetails())
+                : await MenuService.CreateAsync(_form.ToDetails());
+
+            if (result.IsFailure)
+            {
+                _formError = result.Error.Message;
+                _conflict = result.Error.Code == MenuErrors.EditConflict.Code;
+                return;
+            }
+
+            Toasts.Success(_editId is null ? $"{result.Value.Name} added to the menu." : $"{result.Value.Name} saved.");
+            _editing = false;
+            await LoadAsync();
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    /// <summary>After an edit conflict: load what the other admin saved, so nothing is overwritten blindly.</summary>
+    private async Task ReloadEditedAsync()
+    {
+        if (_editId is not { } id)
+        {
+            return;
+        }
+
+        var fresh = await MenuService.GetItemAsync(id);
+        if (fresh.IsSuccess)
+        {
+            _form = MenuItemForm.From(fresh.Value);
+            _editVersion = fresh.Value.Version;
+            _formError = null;
+            _conflict = false;
+            Toasts.Info("Loaded the latest version. Make your change again and save.");
+        }
+    }
+
+    private async Task ArchiveAsync(MenuItemDto item)
+    {
+        if (_confirm is null)
+        {
+            return;
+        }
+
+        var confirmed = await _confirm.AskAsync(
+            $"Archive {item.Name}?",
+            "It disappears from the menu right away. Past orders keep it in their history.",
+            "Archive dish",
+            danger: true);
+        if (!confirmed)
+        {
+            return;
+        }
+
+        var result = await MenuService.ArchiveAsync(item.Id);
+        if (result.IsFailure)
+        {
+            Toasts.Error(result.Error.Message);
+        }
+        else
+        {
+            Toasts.Info($"{item.Name} archived.");
+        }
+
+        await LoadAsync();
+    }
+
+    private void OpenNewCategory()
+    {
+        _categoryForm = new CategoryForm();
+        _categoryError = null;
+        _addingCategory = true;
+    }
+
+    private async Task SaveCategoryAsync()
+    {
+        _saving = true;
+        var result = await MenuService.CreateCategoryAsync(_categoryForm.Name, _categoryForm.Icon);
+        _saving = false;
+        if (result.IsFailure)
+        {
+            _categoryError = result.Error.Message;
+            return;
+        }
+
+        Toasts.Success($"Category {result.Value.Name} added.");
+        _addingCategory = false;
+        await LoadAsync();
+    }
+}

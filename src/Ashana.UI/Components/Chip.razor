@@ -1,0 +1,39 @@
+@typeparam TValue
+
+<button type="button" class="chip @(Selected ? "is-selected" : null)" aria-pressed="@(Selected ? "true" : "false")" @onclick="SelectAsync">
+    @if (Icon is not null)
+    {
+        <span class="chip-icon" aria-hidden="true">@Icon</span>
+    }
+    <span>@ChildContent</span>
+    @if (Count is not null)
+    {
+        <span class="chip-count num">@Count</span>
+    }
+</button>
+
+@code {
+    /// <summary>Set by the parent <see cref="ChipGroup{TValue}"/>.</summary>
+    [CascadingParameter] public ChipGroup<TValue>? Group { get; set; }
+
+    [Parameter] public TValue? Value { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Emoji or short symbol before the text.</summary>
+    [Parameter] public string? Icon { get; set; }
+
+    [Parameter] public int? Count { get; set; }
+
+    private bool Selected => Group?.IsSelected(Value) ?? false;
+
+    protected override void OnInitialized()
+    {
+        if (Group is null)
+        {
+            throw new InvalidOperationException($"{nameof(Chip<TValue>)} must be placed inside a {nameof(ChipGroup<TValue>)}.");
+        }
+    }
+
+    private Task SelectAsync() => Group!.SelectAsync(Value);
+}

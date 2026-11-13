@@ -1,0 +1,29 @@
+@* An order in the student's list. The whole card is a link to the tracking page. *@
+<a class="order-card @(Order.IsActive ? "is-active" : null) status-@Order.Status.ToString().ToLowerInvariant()" href="@($"orders/{Order.Id}")">
+    <span class="order-number num">@Order.Number</span>
+    <span class="order-main">
+        <span class="order-line1">
+            <OrderStatusBadge Status="Order.Status" />
+            <span class="order-slot">@SlotText</span>
+        </span>
+        <span class="order-items">@UiText.Summary(Order.Lines)</span>
+    </span>
+    <span class="order-total num">@Money.Tenge(Order.Total)</span>
+</a>
+
+@code {
+    [Parameter, EditorRequired] public OrderDto Order { get; set; } = default!;
+
+    [Parameter] public DateOnly Today { get; set; }
+
+    private string SlotText
+    {
+        get
+        {
+            var day = Order.ServiceDate == Today ? "Today"
+                : Order.ServiceDate == Today.AddDays(1) ? "Tomorrow"
+                : Order.ServiceDate.ToString("d MMM", System.Globalization.CultureInfo.InvariantCulture);
+            return $"{day}, {Order.SlotLabel}";
+        }
+    }
+}

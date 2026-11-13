@@ -1,0 +1,16 @@
+@* Thin bar showing how full something is (pickup slot capacity). Green, then amber, then red. *@
+<span class="load load-@Level @Class" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@Clamped" aria-label="@Label">
+    <span class="load-fill" style="width: @Clamped%"></span>
+</span>
+
+@code {
+    [Parameter] public int Percent { get; set; }
+
+    [Parameter] public string Label { get; set; } = "Load";
+
+    [Parameter] public string? Class { get; set; }
+
+    private int Clamped => Math.Clamp(Percent, 0, 100);
+
+    internal string Level => Clamped >= 100 ? "full" : Clamped >= 75 ? "busy" : "ok";
+}
